@@ -12,26 +12,33 @@ export function readExcel(file: File): Promise<Person[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const data = e.target?.result;
-      const workbook = XLSX.read(data, { type: "binary" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
 
-      // أول سطر هيدر، باقي الصفوف بيانات
-      const people: Person[] = rows
-        .slice(1)
-        .map((row) => ({
-          name: String(row[0] || "").trim(),
-          nationalId: String(row[1] || "").trim(),
-          phone: row[2] ? String(row[2]) : undefined,
-          email: row[3] ? String(row[3]) : undefined,
-        }))
-        .filter((p) => p.name && p.nationalId);
+        // أول سطر هيدر، باقي الصفوف بيانات
+        const people: Person[] = rows
+          .slice(1)
+          .map((row: any) => ({
+            name: String(row[0] || "").trim(),
+            nationalId: String(row[1] || "").trim(),
+            phone: row[2] ? String(row[2]) : undefined,
+            email: row[3] ? String(row[3]) : undefined,
+          }))
+          .filter((p) => p.name && p.nationalId);
 
-      resolve(people);
+        resolve(people);
+      } catch (err) {
+        reject(err);
+      }
     };
-    reader.onerror = reject;
-    reader.readAsBinaryString(file);
+    reader.onerror = (err) => {
+      console.error("FileReader error:", err);
+      reject(new Error("تعذر قراءة الملف. قد يكون الملف تالفاً أو مستخدماً من قبل برنامج آخر."));
+    };
+    reader.readAsArrayBuffer(file);
   });
 }
 

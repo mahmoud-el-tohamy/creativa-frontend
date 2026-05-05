@@ -244,8 +244,8 @@ export default function Dashboard() {
         {/* Chart A: Line Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">نمو البلاك ليست (التراكمي)</h2>
-          <div className="flex-1 w-full min-w-0 h-full relative">
-            <ResponsiveContainer width="100%" height="100%" minWidth={50} minHeight={50}>
+          <div className="flex-1 w-full min-w-0 h-full relative" style={{ minHeight: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
                 <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 14 }} tickLine={false} axisLine={false} />
@@ -263,8 +263,8 @@ export default function Dashboard() {
         {/* Chart B: Bar Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">الإضافات الشهرية</h2>
-          <div className="flex-1 w-full min-w-0 h-full relative">
-            <ResponsiveContainer width="100%" height="100%" minWidth={50} minHeight={50}>
+          <div className="flex-1 w-full min-w-0 h-full relative" style={{ minHeight: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
                 <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 14 }} tickLine={false} axisLine={false} />
