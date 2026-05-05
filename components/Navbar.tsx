@@ -8,27 +8,33 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/lib/auth";
 
+type NavLink = {
+  href: string;
+  label: string;
+};
+
 const ROLE_META: Record<UserRole, { label: string; color: string }> = {
   admin:    { label: "مدير",   color: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" },
   employee: { label: "موظف",   color: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
   viewer:   { label: "مشاهد", color: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
 };
 
-const BASE_LINKS_ALL = [
+const BASE_LINKS_ALL: NavLink[] = [
   { href: "/",            label: "الرئيسية" },
   { href: "/attendance",  label: "رصد الحضور" },
+  { href: "/multi-day-attendance", label: "الحضور متعدد الأيام" },
   { href: "/filter",      label: "فلترة القوائم" },
   { href: "/certificates",label: "الشهادات" },
   { href: "/blacklist",   label: "البلاك ليست" },
 ];
 
 // Viewer only sees these two
-const VIEWER_LINKS = [
+const VIEWER_LINKS: NavLink[] = [
   { href: "/",        label: "الرئيسية" },
   { href: "/blacklist", label: "البلاك ليست" },
 ];
 
-const ADMIN_LINKS = [
+const ADMIN_LINKS: NavLink[] = [
   { href: "/admin/users", label: "المستخدمون" },
   { href: "/admin/audit", label: "سجل الإجراءات" },
 ];
@@ -49,8 +55,10 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [openDesktopDropdown, setOpenDesktopDropdown] = useState<"attendance" | "admin" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const desktopNavRef = useRef<HTMLDivElement>(null);
   const { user, loading, signOut } = useAuth();
 
   // Must call all hooks before any early return (React rules of hooks)
@@ -76,6 +84,16 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [isUserDropdownOpen]);
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (desktopNavRef.current && !desktopNavRef.current.contains(e.target as Node)) {
+        setOpenDesktopDropdown(null);
+      }
+    };
+    if (openDesktopDropdown) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openDesktopDropdown]);
+
   // Don't render navbar at all on the login page (after all hooks)
   if (pathname === "/login") return null;
 
@@ -87,6 +105,37 @@ export default function Navbar() {
     : isAdmin
     ? [...BASE_LINKS_ALL, ...ADMIN_LINKS]
     : BASE_LINKS_ALL;
+
+  const desktopNavItems = isViewer
+    ? [
+        { type: "link" as const, href: "/", label: "الرئيسية" },
+        { type: "link" as const, href: "/blacklist", label: "البلاك ليست" },
+      ]
+    : [
+        { type: "link" as const, href: "/", label: "الرئيسية" },
+        {
+          type: "group" as const,
+          key: "attendance" as const,
+          label: "الحضور",
+          links: [
+            { href: "/attendance", label: "رصد الحضور" },
+            { href: "/multi-day-attendance", label: "متعدد الأيام" },
+          ],
+        },
+        { type: "link" as const, href: "/filter", label: "الفلترة" },
+        { type: "link" as const, href: "/certificates", label: "الشهادات" },
+        { type: "link" as const, href: "/blacklist", label: "البلاك ليست" },
+        ...(isAdmin
+          ? [
+              {
+                type: "group" as const,
+                key: "admin" as const,
+                label: "الإدارة",
+                links: ADMIN_LINKS,
+              },
+            ]
+          : []),
+      ];
 
   const linkBase = "text-sm font-bold transition-all border-b-2 flex items-center h-full";
   const active   = "text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400";
@@ -112,21 +161,68 @@ export default function Navbar() {
           <div className="flex items-center gap-2 md:gap-4 h-full">
 
             {/* Desktop nav links — full height for border-bottom alignment */}
-            <div className="hidden xl:flex items-stretch h-14 md:h-16 gap-1">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                const isAdminLink = ADMIN_LINKS.some((l) => l.href === link.href);
+            <div className="hidden xl:flex items-stretch h-14 md:h-16 gap-0.5" ref={desktopNavRef}>
+              {desktopNavItems.map((item) => {
+                if (item.type === "link") {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`${linkBase} px-2.5 ${isActive ? active : inactive}`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                }
+
+                const isGroupActive = item.links.some((link) => pathname === link.href);
+                const isOpen = openDesktopDropdown === item.key;
+                const isAdminGroup = item.key === "admin";
+
                 return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`${linkBase} px-3 ${isActive ? active : inactive}`}
-                  >
-                    {isAdminLink && (
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 ml-1.5 shrink-0" />
+                  <div key={item.key} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenDesktopDropdown((prev) => prev === item.key ? null : item.key)}
+                      className={`${linkBase} px-2.5 ${isGroupActive ? active : inactive}`}
+                    >
+                      {isAdminGroup && (
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 ml-1.5 shrink-0" />
+                      )}
+                      {item.label}
+                      <svg
+                        className={`mr-1 h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {isOpen && (
+                      <div className="absolute right-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                        {item.links.map((link) => {
+                          const isActive = pathname === link.href;
+                          return (
+                            <Link
+                              key={link.href}
+                              href={link.href}
+                              onClick={() => setOpenDesktopDropdown(null)}
+                              className={`block px-4 py-3 text-sm font-semibold transition-colors ${
+                                isActive
+                                  ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/70"
+                              }`}
+                            >
+                              {link.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     )}
-                    {link.label}
-                  </Link>
+                  </div>
                 );
               })}
             </div>

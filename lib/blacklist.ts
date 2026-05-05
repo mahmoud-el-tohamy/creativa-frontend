@@ -10,6 +10,7 @@ import {
   Timestamp,
   orderBy,
   writeBatch,
+  serverTimestamp,
 } from "firebase/firestore";
 
 export interface BlacklistEntry {
@@ -73,8 +74,27 @@ export async function cleanupExpired() {
 export async function addManyToBlacklist(
   entries: Omit<BlacklistEntry, "id" | "addedAt">[],
 ) {
-  const promises = entries.map((e) => addToBlacklist(e));
-  await Promise.all(promises);
+  if (entries.length === 0) return;
+
+  const chunkSize = 500;
+  const commits: Promise<void>[] = [];
+
+  for (let i = 0; i < entries.length; i += chunkSize) {
+    const batch = writeBatch(db);
+    const chunk = entries.slice(i, i + chunkSize);
+
+    chunk.forEach((entry) => {
+      const docRef = doc(collection(db, "blacklist"));
+      batch.set(docRef, {
+        ...entry,
+        addedAt: serverTimestamp(),
+      });
+    });
+
+    commits.push(batch.commit());
+  }
+
+  await Promise.all(commits);
 }
 
 // جلب Set من الـ nationalIds للمقارنة السريعة

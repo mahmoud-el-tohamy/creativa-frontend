@@ -126,8 +126,8 @@ export default function Home() {
               try {
                 const people = await readExcel(file);
                 setRegisteredData({ name: file.name, people });
-              } catch (err: any) {
-                showToast(err.message, "error");
+              } catch (err: unknown) {
+                showToast(err instanceof Error ? err.message : "تعذر قراءة ملف المسجلين.", "error");
               }
             }}
             onClear={() => setRegisteredData(null)}
@@ -141,8 +141,8 @@ export default function Home() {
               try {
                 const people = await readExcel(file);
                 setAttendedData({ name: file.name, people });
-              } catch (err: any) {
-                showToast(err.message, "error");
+              } catch (err: unknown) {
+                showToast(err instanceof Error ? err.message : "تعذر قراءة ملف الحضور.", "error");
               }
             }}
             onClear={() => setAttendedData(null)}
