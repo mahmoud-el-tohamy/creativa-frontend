@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getBlacklist, BlacklistEntry } from "@/lib/blacklist";
 import { useAuth } from "@/hooks/useAuth";
 import * as XLSX from "xlsx";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 } from "recharts";
 
 interface MonthlyData {
@@ -16,6 +16,51 @@ interface MonthlyData {
   key: string;
   year: number;
   monthIndex: number;
+}
+
+function ChartContainer({
+  children,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const { width, height } = element.getBoundingClientRect();
+      setSize({
+        width: Math.max(0, Math.floor(width)),
+        height: Math.max(0, Math.floor(height)),
+      });
+    };
+
+    updateSize();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateSize();
+    });
+
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative h-full min-h-[220px] w-full min-w-0 flex-1"
+    >
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div className="h-full w-full animate-pulse rounded-xl bg-gray-100 dark:bg-gray-700/40" />
+      )}
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -218,6 +263,8 @@ export default function Dashboard() {
         {/* Export Excel Dropdown */}
         <div className="flex bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-green-500 transition-all">
           <select
+            id="dashboard-export-range"
+            name="dashboardExportRange"
             className="bg-transparent text-sm font-semibold text-gray-800 dark:text-gray-200 outline-none px-4 py-4 sm:py-3 flex-1 border-l border-gray-100 dark:border-gray-700 appearance-none cursor-pointer"
             onChange={(e) => { if (e.target.value) { downloadExcel(e.target.value); e.target.value = ""; } }}
             defaultValue=""
@@ -248,9 +295,14 @@ export default function Dashboard() {
         {/* Chart A: Line Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">نمو البلاك ليست (التراكمي)</h2>
-          <div className="flex-1 w-full min-w-0 h-full relative" style={{ minHeight: '200px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <ChartContainer>
+            {({ width, height }) => (
+              <LineChart
+                width={width}
+                height={height}
+                data={monthlyData}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
                 <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 14 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fill: '#6B7280' }} tickLine={false} axisLine={false} />
@@ -260,16 +312,21 @@ export default function Dashboard() {
                 />
                 <Line type="monotone" dataKey="cumulative" name="إجمالي المدرجين" stroke="#1D9E75" strokeWidth={3} dot={{ r: 4, fill: '#1D9E75', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartContainer>
         </div>
 
         {/* Chart B: Bar Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">الإضافات الشهرية</h2>
-          <div className="flex-1 w-full min-w-0 h-full relative" style={{ minHeight: '200px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <ChartContainer>
+            {({ width, height }) => (
+              <BarChart
+                width={width}
+                height={height}
+                data={monthlyData}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
                 <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 14 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fill: '#6B7280' }} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -280,8 +337,8 @@ export default function Dashboard() {
                 />
                 <Bar dataKey="count" name="إضافات جديدة" fill="#1D9E75" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartContainer>
         </div>
       </section>
 

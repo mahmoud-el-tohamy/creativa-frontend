@@ -85,6 +85,8 @@ export default function LoginPage() {
                 البريد الإلكتروني أو اسم المستخدم
               </label>
               <input
+                id="login-identifier"
+                name="identifier"
                 type="text"
                 required
                 value={email}
@@ -99,6 +101,8 @@ export default function LoginPage() {
                 كلمة المرور
               </label>
               <input
+                id="login-password"
+                name="password"
                 type="password"
                 required
                 value={password}

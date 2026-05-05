@@ -187,20 +187,20 @@ export default function AuditPage() {
               {/* Performer filter */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">اسم المنفِّذ</label>
-                <input type="text" value={filterPerformer} onChange={(e) => { setFilterPerformer(e.target.value); setPage(1); }}
+                <input id="audit-filter-performer" name="auditFilterPerformer" type="text" value={filterPerformer} onChange={(e) => { setFilterPerformer(e.target.value); setPage(1); }}
                   placeholder="ابحث بالاسم..."
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               {/* Date from */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">من تاريخ</label>
-                <input type="date" value={filterFrom} onChange={(e) => { setFilterFrom(e.target.value); setPage(1); }}
+                <input id="audit-filter-from" name="auditFilterFrom" type="date" value={filterFrom} onChange={(e) => { setFilterFrom(e.target.value); setPage(1); }}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               {/* Date to */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">إلى تاريخ</label>
-                <input type="date" value={filterTo} onChange={(e) => { setFilterTo(e.target.value); setPage(1); }}
+                <input id="audit-filter-to" name="auditFilterTo" type="date" value={filterTo} onChange={(e) => { setFilterTo(e.target.value); setPage(1); }}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>

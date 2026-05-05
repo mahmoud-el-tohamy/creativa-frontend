@@ -294,6 +294,7 @@ function FileUploadCard({
           ref={inputRef}
           type="file"
           id={id}
+          name={id}
           className="hidden"
           accept=".xlsx, .xls, .csv"
           onChange={handleChange}

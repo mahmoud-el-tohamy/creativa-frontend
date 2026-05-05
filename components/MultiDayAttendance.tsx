@@ -236,6 +236,8 @@ export default function MultiDayAttendance() {
                     إجمالي أيام التدريب
                   </span>
                   <input
+                    id="total-training-days"
+                    name="totalTrainingDays"
                     type="number"
                     min="1"
                     value={totalTrainingDays}
@@ -253,6 +255,8 @@ export default function MultiDayAttendance() {
                     الحد الأدنى المسموح للحضور
                   </span>
                   <input
+                    id="minimum-attendance-days"
+                    name="minimumAttendanceDays"
                     type="number"
                     min="1"
                     value={minimumAttendanceDays}
@@ -519,6 +523,8 @@ function SingleFileUploadArea({
     >
       <input
         ref={inputRef}
+        id="multi-day-attendance-file"
+        name="multiDayAttendanceFile"
         type="file"
         className="hidden"
         accept=".xlsx,.xls,.csv"

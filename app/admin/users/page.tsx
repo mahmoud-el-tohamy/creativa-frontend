@@ -92,14 +92,16 @@ function AddUserModal({ onClose, onCreated, currentUser }: AddUserModalProps) {
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl p-3 text-sm">{error}</div>
           )}
           {[
-            { label: "الاسم الكامل", value: displayName, set: setDisplayName, type: "text", placeholder: "مثال: أحمد محمد" },
-            { label: "البريد الإلكتروني", value: email, set: setEmail, type: "email", placeholder: "example@email.com" },
-            { label: "اسم المستخدم", value: username, set: setUsername, type: "text", placeholder: "username" },
-            { label: "كلمة المرور", value: password, set: setPassword, type: "password", placeholder: "8 أحرف على الأقل" },
-          ].map(({ label, value, set, type, placeholder }) => (
+            { key: "displayName", label: "الاسم الكامل", value: displayName, set: setDisplayName, type: "text", placeholder: "مثال: أحمد محمد" },
+            { key: "email", label: "البريد الإلكتروني", value: email, set: setEmail, type: "email", placeholder: "example@email.com" },
+            { key: "username", label: "اسم المستخدم", value: username, set: setUsername, type: "text", placeholder: "username" },
+            { key: "password", label: "كلمة المرور", value: password, set: setPassword, type: "password", placeholder: "8 أحرف على الأقل" },
+          ].map(({ key, label, value, set, type, placeholder }) => (
             <div key={label}>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">{label}</label>
               <input
+                id={`add-user-${key}`}
+                name={key}
                 required type={type} value={value} placeholder={placeholder}
                 onChange={(e) => set(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
@@ -308,6 +310,8 @@ export default function UsersPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
+              id="users-search"
+              name="usersSearch"
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="ابحث بالاسم أو البريد الإلكتروني أو اسم المستخدم..."
               className="w-full pr-12 pl-5 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"

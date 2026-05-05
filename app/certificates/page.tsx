@@ -256,7 +256,7 @@ export default function CertificatesPage() {
                   </svg>
                   <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">اضغط لرفع الصورة (PNG/JPG)</p>
                 </div>
-                <input type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleTemplateUpload} />
+                <input id="certificate-template-file" name="certificateTemplateFile" type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleTemplateUpload} />
               </label>
             </div>
 
@@ -270,7 +270,7 @@ export default function CertificatesPage() {
                   </svg>
                   <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">اضغط لرفع شيت الإكسل</p>
                 </div>
-                <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelUpload} />
+                <input id="certificate-names-file" name="certificateNamesFile" type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelUpload} />
               </label>
               {names.length > 0 && (
                 <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-semibold border border-green-200">
@@ -290,17 +290,17 @@ export default function CertificatesPage() {
                     <span>حجم الخط</span>
                     <span className="font-mono bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 rounded">{fontSize}px</span>
                   </label>
-                  <input type="range" min="12" max="120" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-full accent-blue-600" />
+                  <input id="certificate-font-size" name="certificateFontSize" type="range" min="12" max="120" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-full accent-blue-600" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">موضع أفقي %</label>
-                    <input type="number" step="0.1" value={position.x.toFixed(1)} onChange={(e) => setPosition({ ...position, x: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-center font-mono" />
+                    <input id="certificate-position-x" name="certificatePositionX" type="number" step="0.1" value={position.x.toFixed(1)} onChange={(e) => setPosition({ ...position, x: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-center font-mono" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">موضع رأسي %</label>
-                    <input type="number" step="0.1" value={position.y.toFixed(1)} onChange={(e) => setPosition({ ...position, y: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-center font-mono" />
+                    <input id="certificate-position-y" name="certificatePositionY" type="number" step="0.1" value={position.y.toFixed(1)} onChange={(e) => setPosition({ ...position, y: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-center font-mono" />
                   </div>
                 </div>
               </div>

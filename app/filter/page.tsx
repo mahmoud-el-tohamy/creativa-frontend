@@ -167,35 +167,51 @@ export default function FilterPage() {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <StatCard title="إجمالي المرشحين" value={candidates.length} color="text-blue-600" bgColor="bg-blue-50" />
-              <StatCard title="في البلاك ليست" value={blacklistedList.length} color="text-red-600" bgColor="bg-red-50" />
-              <StatCard title="سيتم إرسالهم (النظيفة)" value={cleanList.length} color="text-green-600" bgColor="bg-green-50" />
+              <StatCard title="إجمالي المرشحين" value={candidates.length} color="text-blue-600 dark:text-blue-300" bgColor="bg-gradient-to-br from-blue-50 to-slate-100 dark:from-blue-950/30 dark:to-slate-800" borderColor="border-blue-100 dark:border-blue-900/30" />
+              <StatCard title="في البلاك ليست" value={blacklistedList.length} color="text-red-600 dark:text-red-300" bgColor="bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-950/30 dark:to-rose-900/20" borderColor="border-red-100 dark:border-red-900/30" />
+              <StatCard title="سيتم إرسالهم (النظيفة)" value={cleanList.length} color="text-green-600 dark:text-green-300" bgColor="bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-950/30 dark:to-teal-900/20" borderColor="border-emerald-100 dark:border-emerald-900/30" />
             </div>
 
             {/* Blacklisted Collapsible */}
             {blacklistedList.length > 0 && (
-              <div className="bg-red-50 border border-red-100 rounded-2xl overflow-hidden">
+              <div className="overflow-hidden rounded-3xl border border-red-100 bg-gradient-to-br from-red-50 via-rose-50 to-white shadow-sm dark:border-red-900/30 dark:from-red-950/20 dark:via-rose-950/10 dark:to-gray-800">
                 <button
                   onClick={() => setShowBlacklisted(!showBlacklisted)}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-red-100/50 hover:bg-red-100 transition-colors text-red-800 font-bold"
+                  className="flex w-full items-center justify-between px-6 py-5 text-red-800 transition-colors hover:bg-red-100/40 dark:text-red-300 dark:hover:bg-red-900/10"
                 >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    الأشخاص المستبعدين (موجودين في البلاك ليست)
+                  <span className="flex items-center gap-3">
+                    <span className="rounded-2xl bg-white/90 p-2 shadow-sm dark:bg-gray-900/30">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </span>
+                    <span className="text-right">
+                      <span className="block text-base font-extrabold">الأشخاص المستبعدين</span>
+                      <span className="mt-1 block text-sm font-medium text-red-700/80 dark:text-red-300/80">
+                        موجودون بالفعل في البلاك ليست
+                      </span>
+                    </span>
                   </span>
-                  <svg className={`w-5 h-5 transition-transform ${showBlacklisted ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+
+                  <span className="flex items-center gap-3">
+                    <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-extrabold text-red-700 dark:bg-red-900/20 dark:text-red-300">
+                      {blacklistedList.length}
+                    </span>
+                    <svg className={`h-5 w-5 transition-transform ${showBlacklisted ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
                 </button>
                 
                 {showBlacklisted && (
-                  <div className="p-6">
-                    <div className="flex flex-wrap gap-2">
+                  <div className="border-t border-red-100/80 px-6 py-5 dark:border-red-900/20">
+                    <div className="flex flex-wrap gap-2.5">
                       {blacklistedList.map((person, idx) => (
-                        <span key={idx} className="bg-white dark:bg-gray-800 text-red-700 text-sm px-3 py-1.5 rounded-full border border-red-200 shadow-sm font-medium">
-                          {person.name} ({person.nationalId})
+                        <span key={idx} className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 shadow-sm dark:border-red-900/30 dark:bg-gray-900/30 dark:text-red-300">
+                          <span className="max-w-[220px] truncate">{person.name}</span>
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 font-mono text-xs dark:bg-red-900/20">
+                            {person.nationalId}
+                          </span>
                         </span>
                       ))}
                     </div>
@@ -279,11 +295,13 @@ export default function FilterPage() {
   );
 }
 
-function StatCard({ title, value, color, bgColor }: { title: string, value: number, color: string, bgColor: string }) {
+function StatCard({ title, value, color, bgColor, borderColor }: { title: string, value: number, color: string, bgColor: string, borderColor: string }) {
   return (
-    <div className={`rounded-xl p-6 flex flex-col items-center justify-center text-center space-y-2 ${bgColor}`}>
-      <span className="text-gray-600 font-medium">{title}</span>
-      <span className={`text-4xl font-bold ${color}`}>{value}</span>
+    <div className={`rounded-3xl border p-6 text-center shadow-sm ${bgColor} ${borderColor}`}>
+      <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{title}</span>
+      <div className="mt-3 flex items-center justify-center">
+        <span className={`text-4xl font-extrabold tracking-tight ${color}`}>{value}</span>
+      </div>
     </div>
   );
 }
@@ -329,6 +347,8 @@ function FileUploadArea({ file, setFile }: { file: File | null, setFile: (f: Fil
     >
       <input
         ref={inputRef}
+        id="filter-candidates-file"
+        name="filterCandidatesFile"
         type="file"
         className="hidden"
         accept=".xlsx, .xls, .csv"
