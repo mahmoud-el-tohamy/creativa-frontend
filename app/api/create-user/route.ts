@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // Create the Firebase Auth user via Admin SDK
-    const userRecord = await adminAuth.createUser({
+    const userRecord = await getAdminAuth().createUser({
       email,
       password,
       displayName,
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const uid = userRecord.uid;
 
     // Create the Firestore users document
-    await adminDb.collection("users").doc(uid).set({
+    await getAdminDb().collection("users").doc(uid).set({
       uid,
       email,
       username,
