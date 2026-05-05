@@ -9,8 +9,8 @@ import { logAction } from "@/lib/audit";
 
 export default function Home() {
   const { user } = useAuth();
-  const [registeredFile, setRegisteredFile] = useState<File | null>(null);
-  const [attendedFile, setAttendedFile] = useState<File | null>(null);
+  const [registeredData, setRegisteredData] = useState<{ name: string; people: Person[] } | null>(null);
+  const [attendedData, setAttendedData] = useState<{ name: string; people: Person[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -27,7 +27,7 @@ export default function Home() {
   };
 
   const handleProcess = async () => {
-    if (!registeredFile || !attendedFile) {
+    if (!registeredData || !attendedData) {
       showToast("الرجاء رفع كلا الملفين (المسجلون والحضور) أولاً.", "error");
       return;
     }
@@ -36,9 +36,8 @@ export default function Home() {
     setResult(null);
 
     try {
-      // 1. قراءة الملفين
-      const registeredPeople = await readExcel(registeredFile);
-      const attendedPeople = await readExcel(attendedFile);
+      const registeredPeople = registeredData.people;
+      const attendedPeople = attendedData.people;
 
       if (registeredPeople.length === 0) {
         showToast("ملف المسجلين فارغ أو لم يتم قراءته بشكل صحيح.", "error");
@@ -92,7 +91,7 @@ export default function Home() {
       showToast("تمت المقارنة والإضافة بنجاح!", "success");
     } catch (error) {
       console.error(error);
-      showToast("حدث خطأ أثناء معالجة الملفات. يرجى التأكد من صيغة الملفات.", "error");
+      showToast("حدث خطأ أثناء معالجة البيانات.", "error");
     } finally {
       setLoading(false);
     }
@@ -122,15 +121,31 @@ export default function Home() {
           <FileUploadCard 
             title="ملف المسجلين (File A)" 
             description="الرجاء رفع ملف الإكسل الذي يحتوي على جميع المسجلين."
-            file={registeredFile}
-            setFile={setRegisteredFile}
+            fileInfo={registeredData}
+            onFileSelect={async (file) => {
+              try {
+                const people = await readExcel(file);
+                setRegisteredData({ name: file.name, people });
+              } catch (err: any) {
+                showToast(err.message, "error");
+              }
+            }}
+            onClear={() => setRegisteredData(null)}
             id="file-registered"
           />
           <FileUploadCard 
             title="ملف الحضور (File B)" 
             description="الرجاء رفع ملف الإكسل الذي يحتوي على الحاضرين فقط."
-            file={attendedFile}
-            setFile={setAttendedFile}
+            fileInfo={attendedData}
+            onFileSelect={async (file) => {
+              try {
+                const people = await readExcel(file);
+                setAttendedData({ name: file.name, people });
+              } catch (err: any) {
+                showToast(err.message, "error");
+              }
+            }}
+            onClear={() => setAttendedData(null)}
             id="file-attended"
           />
         </div>
@@ -213,7 +228,21 @@ function StatCard({ title, value, color, bgColor, subtitle }: { title: string, v
   );
 }
 
-function FileUploadCard({ title, description, file, setFile, id }: { title: string, description: string, file: File | null, setFile: (f: File | null) => void, id: string }) {
+function FileUploadCard({ 
+  title, 
+  description, 
+  fileInfo, 
+  onFileSelect, 
+  onClear, 
+  id 
+}: { 
+  title: string, 
+  description: string, 
+  fileInfo: { name: string; people: Person[] } | null, 
+  onFileSelect: (f: File) => void, 
+  onClear: () => void, 
+  id: string 
+}) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -234,7 +263,7 @@ function FileUploadCard({ title, description, file, setFile, id }: { title: stri
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
       if (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls') || droppedFile.name.endsWith('.csv')) {
-         setFile(droppedFile);
+         onFileSelect(droppedFile);
       }
     }
   };
@@ -242,7 +271,7 @@ function FileUploadCard({ title, description, file, setFile, id }: { title: stri
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      onFileSelect(e.target.files[0]);
     }
   };
 
@@ -254,7 +283,7 @@ function FileUploadCard({ title, description, file, setFile, id }: { title: stri
       <div 
         className={`mt-auto relative rounded-xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center p-8 text-center cursor-pointer min-h-[200px]
           ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 dark:border-gray-600 bg-transparent dark:bg-transparent hover:bg-gray-100"}
-          ${file ? "border-green-400 bg-green-50" : ""}`}
+          ${fileInfo ? "border-green-400 bg-green-50" : ""}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -270,7 +299,7 @@ function FileUploadCard({ title, description, file, setFile, id }: { title: stri
           onChange={handleChange}
         />
         
-        {file ? (
+        {fileInfo ? (
           <div className="space-y-3">
             <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -278,11 +307,11 @@ function FileUploadCard({ title, description, file, setFile, id }: { title: stri
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 break-all">{file.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 break-all">{fileInfo.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{fileInfo.people.length} سجل تم العثور عليه</p>
             </div>
             <button 
-              onClick={(e) => { e.stopPropagation(); setFile(null); if(inputRef.current) inputRef.current.value=''; }}
+              onClick={(e) => { e.stopPropagation(); onClear(); if(inputRef.current) inputRef.current.value=''; }}
               className="mt-2 text-sm text-red-500 hover:text-red-700 font-medium inline-flex items-center gap-1 bg-red-50 px-3 py-1 rounded-full"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
