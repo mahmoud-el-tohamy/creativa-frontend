@@ -18,6 +18,8 @@ export default function Home() {
   const [isParsingAttended, setIsParsingAttended] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  
+  const [swapModal, setSwapModal] = useState({ isOpen: false, registeredCount: 0, attendanceCount: 0 });
 
   const [result, setResult] = useState<{
     registeredCount: number;
@@ -38,6 +40,14 @@ export default function Home() {
       const data = await readExcel(file);
       setRegisteredFile({ name: file.name, size: file.size, data });
       showToast(`تم تحميل ملف المسجلين بنجاح.`, "success");
+
+      if (attendedFile && attendedFile.data.length > data.length) {
+        setSwapModal({ 
+          isOpen: true, 
+          registeredCount: data.length, 
+          attendanceCount: attendedFile.data.length 
+        });
+      }
     } catch (error) {
       console.error(error);
       showToast("تعذر قراءة ملف المسجلين. يرجى التأكد من صيغة الملف.", "error");
@@ -52,6 +62,14 @@ export default function Home() {
       const data = await readExcel(file);
       setAttendedFile({ name: file.name, size: file.size, data });
       showToast(`تم تحميل ملف الحضور بنجاح.`, "success");
+
+      if (registeredFile && data.length > registeredFile.data.length) {
+        setSwapModal({ 
+          isOpen: true, 
+          registeredCount: registeredFile.data.length, 
+          attendanceCount: data.length 
+        });
+      }
     } catch (error) {
       console.error(error);
       showToast("تعذر قراءة ملف الحضور. يرجى التأكد من صيغة الملف.", "error");
@@ -146,7 +164,52 @@ export default function Home() {
 
   return (
     <RouteGuard allowedRoles={["admin", "employee"]}>
-    <main className="flex-1 bg-transparent dark:bg-transparent text-gray-900 dark:text-gray-100 p-6 sm:p-12 font-sans w-full">
+    <main className="flex-1 bg-transparent dark:bg-transparent text-gray-900 dark:text-gray-100 p-6 sm:p-12 font-sans w-full relative min-h-screen">
+      {/* Swap Detection Modal */}
+      {swapModal.isOpen && (
+        <div className="absolute inset-0 z-50 flex items-start justify-center pt-20 pb-10 bg-black/60 min-h-full backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                تنبيه: يبدو أن الملفين مقلوبان!
+              </h2>
+              <div className="text-gray-600 dark:text-gray-300 text-base leading-relaxed space-y-2">
+                <p>
+                  ملف الحضور يحتوي على <span className="font-bold text-amber-600 dark:text-amber-400">{swapModal.attendanceCount}</span> سجلاً، بينما ملف المسجلين يحتوي على <span className="font-bold text-amber-600 dark:text-amber-400">{swapModal.registeredCount}</span> سجلاً فقط.
+                </p>
+                <p>في الغالب، عدد المسجلين يكون أكبر من أو يساوي عدد الحاضرين.</p>
+                <p className="font-medium">هل تريد المتابعة على مسؤوليتك، أم تريد إعادة رفع الملفات؟</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 w-full mt-6">
+                <button
+                  onClick={() => {
+                    setRegisteredFile(null);
+                    setAttendedFile(null);
+                    setSwapModal({ isOpen: false, registeredCount: 0, attendanceCount: 0 });
+                  }}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-md"
+                >
+                  إعادة رفع الملفات
+                </button>
+                <button
+                  onClick={() => {
+                    setSwapModal({ isOpen: false, registeredCount: 0, attendanceCount: 0 });
+                  }}
+                  className="flex-1 bg-transparent border-2 border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-bold py-3 px-6 rounded-xl transition-colors"
+                >
+                  متابعة على مسؤوليتي
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 transition-all ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
@@ -396,7 +459,12 @@ function FileUploadCard({
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 break-all">{fileState.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{(fileState.size / 1024).toFixed(1)} KB • {fileState.data.length} سجل</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{(fileState.size / 1024).toFixed(1)} KB</p>
+              <div className="mt-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${fileState.data.length > 0 ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}`}>
+                  {fileState.data.length} سجل
+                </span>
+              </div>
             </div>
             <button 
               onClick={(e) => { e.stopPropagation(); onClear(); if(inputRef.current) inputRef.current.value=''; }}
