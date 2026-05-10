@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logAction } from "@/lib/audit";
 import { addManyToBlacklist, getBlacklistIds } from "@/lib/blacklist";
 import {
-  downloadMultiDayAttendanceExcel,
+  downloadStyledExcel,
   MultiDayAttendancePerson,
   MultiDayAttendanceSummaryRow,
   readMultiDayAttendanceExcel,
@@ -17,9 +17,11 @@ interface ProcessingResult {
   uniquePeopleCount: number;
   passedList: MultiDayAttendanceSummaryRow[];
   failedList: MultiDayAttendanceSummaryRow[];
+  addedToBlacklist: MultiDayAttendanceSummaryRow[];
   addedToBlacklistCount: number;
   skippedExistingCount: number;
-  invalidBlacklistEntries: { name: string; nationalId: string; reason: string }[];
+  invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[];
+  skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[];
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -141,16 +143,25 @@ export default function MultiDayAttendance() {
 
       const existingBlacklistIds =
         failedList.length > 0 ? await getBlacklistIds() : new Set<string>();
-        
-      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string }[] = [];
+
+      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[] = [];
+      const skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[] = [];
       const newBlacklistEntries = failedList.filter((person) => {
-        if (existingBlacklistIds.has(person.nationalId)) return false;
+        if (existingBlacklistIds.has(person.nationalId)) {
+          skippedExistingBlacklistEntries.push({
+            name: person.name,
+            nationalId: person.nationalId,
+            attendedDays: person.attendedDays,
+          });
+          return false;
+        }
         
         if (person.invalidReason) {
           invalidBlacklistEntries.push({
             name: person.name,
             nationalId: person.nationalId,
             reason: person.invalidReason,
+            attendedDays: person.attendedDays,
           });
           return false;
         }
@@ -172,9 +183,11 @@ export default function MultiDayAttendance() {
         uniquePeopleCount: summaryRows.length,
         passedList,
         failedList,
+        addedToBlacklist: newBlacklistEntries,
         addedToBlacklistCount: newBlacklistEntries.length,
-        skippedExistingCount: failedList.length - newBlacklistEntries.length - invalidBlacklistEntries.length,
+        skippedExistingCount: skippedExistingBlacklistEntries.length,
         invalidBlacklistEntries,
+        skippedExistingBlacklistEntries,
       };
 
       setResult(processingResult);
@@ -203,16 +216,40 @@ export default function MultiDayAttendance() {
     }
   };
 
-  const handleDownloadCleanSheet = () => {
+  const handleDownloadPassed = () => {
     if (!result?.passedList.length) {
       showToast("لا يوجد ناجحون لتصديرهم.", "error");
       return;
     }
+    const data: (string | number)[][] = [
+      ["الاسم", "الرقم القومي", "أيام الحضور"],
+      ...result.passedList.map(p => [p.name, p.nationalId, p.attendedDays])
+    ];
+    downloadStyledExcel({
+      data,
+      sheetName: "الحاضرون ✓",
+      filename: `creativa_متعدد_الايام_${new Date().toISOString().slice(0, 10)}_ناجحين`,
+      rowColors: { odd: "F0FFF8", even: "FFFFFF" }
+    });
+  };
 
-    downloadMultiDayAttendanceExcel(
-      result.passedList,
-      `clean_sheet_${new Date().toISOString().slice(0, 10)}.xlsx`,
-    );
+  const handleDownloadBlacklisted = () => {
+    if (!result?.addedToBlacklist.length && !result?.invalidBlacklistEntries.length && !result?.skippedExistingBlacklistEntries.length) {
+      showToast("لا يوجد مضافين للبلاك ليست لتصديرهم.", "error");
+      return;
+    }
+    const data: (string | number)[][] = [
+      ["الاسم", "الرقم القومي", "أيام الحضور", "ملاحظات"],
+      ...result.addedToBlacklist.map(p => [p.name, p.nationalId, p.attendedDays, "تم الإضافة للبلاك ليست"]),
+      ...result.invalidBlacklistEntries.map(p => [p.name, p.nationalId, p.attendedDays, p.reason]),
+      ...result.skippedExistingBlacklistEntries.map(p => [p.name, p.nationalId, p.attendedDays, "موجود مسبقاً في البلاك ليست"])
+    ];
+    downloadStyledExcel({
+      data,
+      sheetName: "البلاك ليست 🚫",
+      filename: `creativa_متعدد_الايام_${new Date().toISOString().slice(0, 10)}_مرفوضين`,
+      rowColors: { odd: "FFF0F0", even: "FFFFFF" }
+    });
   };
 
   return (
@@ -382,31 +419,37 @@ export default function MultiDayAttendance() {
                     </p>
                   </div>
 
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
-                    onClick={handleDownloadCleanSheet}
+                    onClick={handleDownloadPassed}
                     disabled={result.passedList.length === 0}
-                    className={`inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white shadow-sm transition-all ${
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all ${
                       result.passedList.length === 0
                         ? "cursor-not-allowed bg-gray-400"
-                        : "bg-green-600 hover:scale-[1.02] hover:bg-green-700"
+                        : "bg-teal-600 hover:scale-[1.02] hover:bg-teal-700"
                     }`}
                   >
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                      />
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    تنزيل Clean Sheet
+                    شيت الناجحين
+                  </button>
+                  <button
+                    onClick={handleDownloadBlacklisted}
+                    disabled={result.addedToBlacklist.length === 0 && result.invalidBlacklistEntries.length === 0 && result.skippedExistingBlacklistEntries.length === 0}
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all ${
+                      result.addedToBlacklist.length === 0 && result.invalidBlacklistEntries.length === 0 && result.skippedExistingBlacklistEntries.length === 0
+                        ? "cursor-not-allowed bg-gray-400"
+                        : "bg-red-600 hover:scale-[1.02] hover:bg-red-700"
+                    }`}
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    شيت المضافين للبلاك ليست
                   </button>
                 </div>
+              </div>
 
                 <div className="mt-5 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
                   <table className="w-full min-w-[720px] text-right text-sm text-gray-600 dark:text-gray-300">

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { readExcel, Person } from "@/lib/excel";
+import { readExcel, Person, downloadStyledExcel } from "@/lib/excel";
 import { addManyToBlacklist, getBlacklistIds } from "@/lib/blacklist";
 import { validateNationalId } from "@/lib/validation";
 import RouteGuard from "@/components/RouteGuard";
@@ -27,6 +27,8 @@ export default function Home() {
     addedCount: number;
     absentees: Person[];
     invalidEntries?: { name: string; nationalId: string; reason: string }[];
+    attendedPeople: Person[];
+    skippedExisting: Person[];
   } | null>(null);
 
   const showToast = (message: string, type: "success" | "error") => {
@@ -109,7 +111,14 @@ export default function Home() {
 
       // 3. التحقق من البلاك ليست لتجنب التكرار
       const existingBlacklistIds = await getBlacklistIds();
-      const newAbsentees = absentees.filter((p) => !existingBlacklistIds.has(p.nationalId));
+      const skippedExisting: Person[] = [];
+      const newAbsentees = absentees.filter((p) => {
+        if (existingBlacklistIds.has(p.nationalId)) {
+          skippedExisting.push(p);
+          return false;
+        }
+        return true;
+      });
 
       // 4. الإضافة إلى البلاك ليست (الجدد فقط)
       const validToBlacklist: Person[] = [];
@@ -139,6 +148,8 @@ export default function Home() {
         addedCount: validToBlacklist.length,
         absentees: validToBlacklist,
         invalidEntries,
+        attendedPeople,
+        skippedExisting,
       });
 
       if (user) {
@@ -160,6 +171,36 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownloadAttended = () => {
+    if (!result) return;
+    const data: (string | number)[][] = [
+      ["الاسم", "الرقم القومي"],
+      ...result.attendedPeople.map(p => [p.name, p.nationalId])
+    ];
+    downloadStyledExcel({
+      data,
+      sheetName: "الحاضرون ✓",
+      filename: `creativa_حضور_${new Date().toISOString().slice(0, 10)}_حاضرون`,
+      rowColors: { odd: "F0FFF8", even: "FFFFFF" }
+    });
+  };
+
+  const handleDownloadBlacklisted = () => {
+    if (!result) return;
+    const data: (string | number)[][] = [
+      ["الاسم", "الرقم القومي", "ملاحظات"],
+      ...result.absentees.map(p => [p.name, p.nationalId, "تم الإضافة للبلاك ليست"]),
+      ...(result.invalidEntries || []).map(p => [p.name, p.nationalId, p.reason]),
+      ...result.skippedExisting.map(p => [p.name, p.nationalId, "موجود مسبقاً في البلاك ليست"])
+    ];
+    downloadStyledExcel({
+      data,
+      sheetName: "البلاك ليست 🚫",
+      filename: `creativa_حضور_${new Date().toISOString().slice(0, 10)}_مرفوضين`,
+      rowColors: { odd: "FFF0F0", even: "FFFFFF" }
+    });
   };
 
   return (
@@ -277,6 +318,29 @@ export default function Home() {
               <StatCard title="إجمالي المسجلين" value={result.registeredCount} color="text-blue-600" bgColor="bg-blue-50" />
               <StatCard title="إجمالي الحضور" value={result.attendedCount} color="text-green-600" bgColor="bg-green-50" />
               <StatCard title="المنضمين للبلاك ليست" value={result.addedCount} color="text-red-600" bgColor="bg-red-50" subtitle="(متغيبين جدد)" />
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 mb-6">
+              <button
+                onClick={handleDownloadAttended}
+                disabled={result.attendedCount === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-sm transition-all bg-teal-600 hover:scale-[1.02] hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                شيت الحاضرين
+              </button>
+              <button
+                onClick={handleDownloadBlacklisted}
+                disabled={result.addedCount === 0 && (!result.invalidEntries || result.invalidEntries.length === 0) && result.skippedExisting.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-sm transition-all bg-red-600 hover:scale-[1.02] hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                شيت المضافين للبلاك ليست
+              </button>
             </div>
 
             <div className="space-y-4">

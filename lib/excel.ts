@@ -190,3 +190,56 @@ export function downloadMultiDayAttendanceExcel(
   XLSX.utils.book_append_sheet(wb, ws, "Clean Sheet");
   XLSX.writeFile(wb, filename);
 }
+
+export function downloadStyledExcel(params: {
+  data: (string | number)[][];
+  sheetName: string;
+  filename: string;
+  rowColors: { odd: string; even: string };
+}): void {
+  const { data, sheetName, filename, rowColors } = params;
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // RTL direction
+  ws["!dir"] = "rtl";
+
+  // Auto-width
+  if (data.length > 0) {
+    const colWidths = data[0].map((_, colIndex) => {
+      return Math.max(
+        15,
+        ...data.map((row) => String(row[colIndex] || "").length)
+      );
+    });
+    ws["!cols"] = colWidths.map((w) => ({ wch: w + 5 }));
+  }
+
+  // Apply styles
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[cellRef];
+      if (!cell) continue;
+
+      if (R === 0) {
+        // Header style
+        cell.s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "1D9E75" } }
+        };
+      } else {
+        // Data rows alternating style
+        const bgColor = R % 2 === 1 ? rowColors.odd : rowColors.even;
+        cell.s = {
+          fill: { fgColor: { rgb: bgColor } }
+        };
+      }
+    }
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+}
