@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { validateNationalId } from "./validation";
 
 export interface Person {
   name: string;
@@ -11,6 +12,7 @@ export interface MultiDayAttendancePerson {
   name: string;
   id: string;
   nationalId: string;
+  invalidReason?: string;
 }
 
 export interface MultiDayAttendanceSummaryRow extends MultiDayAttendancePerson {
@@ -114,11 +116,17 @@ export async function readMultiDayAttendanceExcel(
     }
 
     const people = rows
-      .map((row) => ({
-        name: String(row[nameKey] ?? "").trim(),
-        id: String(row[idKey] ?? "").trim(),
-        nationalId: String(row[nationalIdKey] ?? "").trim(),
-      }))
+      .map((row) => {
+        const nid = String(row[nationalIdKey] ?? "").trim();
+        const validation = validateNationalId(nid);
+        
+        return {
+          name: String(row[nameKey] ?? "").trim(),
+          id: String(row[idKey] ?? "").trim(),
+          nationalId: nid,
+          invalidReason: validation.isValid ? undefined : validation.reason,
+        };
+      })
       .filter((person) => person.name || person.id || person.nationalId)
       .filter((person) => person.name && person.id && person.nationalId);
 

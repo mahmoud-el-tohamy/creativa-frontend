@@ -19,6 +19,7 @@ interface ProcessingResult {
   failedList: MultiDayAttendanceSummaryRow[];
   addedToBlacklistCount: number;
   skippedExistingCount: number;
+  invalidBlacklistEntries: { name: string; nationalId: string; reason: string }[];
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -33,7 +34,7 @@ export default function MultiDayAttendance() {
   const { user } = useAuth();
   const [totalTrainingDays, setTotalTrainingDays] = useState("5");
   const [minimumAttendanceDays, setMinimumAttendanceDays] = useState("3");
-  const [file, setFile] = useState<File | null>(null);
+  const [fileInfo, setFileInfo] = useState<{ name: string; size: number } | null>(null);
   const [parsedRows, setParsedRows] = useState<MultiDayAttendancePerson[] | null>(
     null,
   );
@@ -61,13 +62,13 @@ export default function MultiDayAttendance() {
     }
 
     setIsParsingFile(true);
-    setFile(null);
+    setFileInfo(null);
     setParsedRows(null);
     resetResults();
 
     try {
       const rows = await readMultiDayAttendanceExcel(selectedFile);
-      setFile(selectedFile);
+      setFileInfo({ name: selectedFile.name, size: selectedFile.size });
       setParsedRows(rows);
       showToast(`تم تحميل الملف بنجاح. تم العثور على ${rows.length} سجل.`, "success");
     } catch (error: unknown) {
@@ -79,7 +80,7 @@ export default function MultiDayAttendance() {
   };
 
   const clearFile = () => {
-    setFile(null);
+    setFileInfo(null);
     setParsedRows(null);
     resetResults();
   };
@@ -88,7 +89,7 @@ export default function MultiDayAttendance() {
     const totalDays = Number(totalTrainingDays);
     const minimumDays = Number(minimumAttendanceDays);
 
-    if (!file || !parsedRows) {
+    if (!fileInfo || !parsedRows) {
       showToast("الرجاء رفع ملف الحضور أولاً.", "error");
       return;
     }
@@ -140,9 +141,22 @@ export default function MultiDayAttendance() {
 
       const existingBlacklistIds =
         failedList.length > 0 ? await getBlacklistIds() : new Set<string>();
-      const newBlacklistEntries = failedList.filter(
-        (person) => !existingBlacklistIds.has(person.nationalId),
-      );
+        
+      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string }[] = [];
+      const newBlacklistEntries = failedList.filter((person) => {
+        if (existingBlacklistIds.has(person.nationalId)) return false;
+        
+        if (person.invalidReason) {
+          invalidBlacklistEntries.push({
+            name: person.name,
+            nationalId: person.nationalId,
+            reason: person.invalidReason,
+          });
+          return false;
+        }
+        
+        return true;
+      });
 
       if (newBlacklistEntries.length > 0) {
         await addManyToBlacklist(
@@ -159,7 +173,8 @@ export default function MultiDayAttendance() {
         passedList,
         failedList,
         addedToBlacklistCount: newBlacklistEntries.length,
-        skippedExistingCount: failedList.length - newBlacklistEntries.length,
+        skippedExistingCount: failedList.length - newBlacklistEntries.length - invalidBlacklistEntries.length,
+        invalidBlacklistEntries,
       };
 
       setResult(processingResult);
@@ -272,7 +287,7 @@ export default function MultiDayAttendance() {
 
               <div className="mt-6">
                 <SingleFileUploadArea
-                  file={file}
+                  fileInfo={fileInfo}
                   parsedRowsCount={parsedRows?.length ?? 0}
                   isParsing={isParsingFile}
                   onFileSelect={handleFileSelection}
@@ -289,9 +304,9 @@ export default function MultiDayAttendance() {
 
                 <button
                   onClick={handleProcess}
-                  disabled={isProcessing || isParsingFile || !file || !parsedRows}
+                  disabled={isProcessing || isParsingFile || !fileInfo || !parsedRows}
                   className={`rounded-full px-8 py-3 text-lg font-bold text-white shadow-md transition-all duration-300 ${
-                    isProcessing || isParsingFile || !file || !parsedRows
+                    isProcessing || isParsingFile || !fileInfo || !parsedRows
                       ? "cursor-not-allowed bg-gray-400"
                       : "bg-blue-600 hover:scale-[1.02] hover:bg-blue-700"
                   }`}
@@ -414,7 +429,15 @@ export default function MultiDayAttendance() {
                               {person.name}
                             </td>
                             <td className="px-5 py-4">{person.id}</td>
-                            <td className="px-5 py-4">{person.nationalId}</td>
+                            <td className="px-5 py-4">
+                              {person.invalidReason ? (
+                                <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                                  رقم غير صالح
+                                </span>
+                              ) : (
+                                person.nationalId
+                              )}
+                            </td>
                             <td className="px-5 py-4">
                               <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-300">
                                 {person.attendedDays} / {totalTrainingDays}
@@ -436,6 +459,44 @@ export default function MultiDayAttendance() {
                   </table>
                 </div>
               </div>
+              {/* Invalid Entries Warning Card */}
+              {result.invalidBlacklistEntries && result.invalidBlacklistEntries.length > 0 && (
+                <div className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/20 rounded-r-xl p-6 shadow-sm transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-4">
+                    <svg className="w-6 h-6 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <h3 className="text-lg font-bold text-amber-800 dark:text-amber-400">
+                      تحذير: تم تجاهل {result.invalidBlacklistEntries.length} سجل من الإضافة للبلاك ليست بسبب أرقام قومية غير صالحة
+                    </h3>
+                  </div>
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm font-semibold text-amber-700 dark:text-amber-500 hover:text-amber-900 dark:hover:text-amber-300 select-none outline-none">
+                      عرض التفاصيل
+                    </summary>
+                    <div className="mt-4 overflow-hidden overflow-x-auto rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800/50">
+                      <table className="w-full text-sm text-right text-gray-600 dark:text-gray-300">
+                        <thead className="bg-amber-100/50 dark:bg-amber-900/30 font-semibold border-b border-amber-200 dark:border-amber-800">
+                          <tr>
+                            <th className="px-4 py-3">الاسم</th>
+                            <th className="px-4 py-3">الرقم القومي</th>
+                            <th className="px-4 py-3">السبب</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.invalidBlacklistEntries.map((entry, idx) => (
+                            <tr key={idx} className="border-b border-amber-100 dark:border-amber-800/50 last:border-0 hover:bg-amber-50/50 dark:hover:bg-amber-900/10">
+                              <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{entry.name}</td>
+                              <td className="px-4 py-3">{entry.nationalId}</td>
+                              <td className="px-4 py-3 text-red-600 dark:text-red-400">{entry.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -464,13 +525,13 @@ function StatCard({
 }
 
 function SingleFileUploadArea({
-  file,
+  fileInfo,
   parsedRowsCount,
   isParsing,
   onFileSelect,
   onClear,
 }: {
-  file: File | null;
+  fileInfo: { name: string; size: number } | null;
   parsedRowsCount: number;
   isParsing: boolean;
   onFileSelect: (file: File) => void;
@@ -514,7 +575,7 @@ function SingleFileUploadArea({
         isDragging
           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
           : "border-gray-300 bg-transparent hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-900/20"
-      } ${file ? "border-green-400 bg-green-50 dark:bg-green-900/20" : ""}`}
+      } ${fileInfo ? "border-green-400 bg-green-50 dark:bg-green-900/20" : ""}`}
       onClick={() => inputRef.current?.click()}
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
@@ -545,7 +606,7 @@ function SingleFileUploadArea({
             </p>
           </div>
         </div>
-      ) : file ? (
+      ) : fileInfo ? (
         <div className="space-y-4">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300">
             <svg
@@ -564,10 +625,10 @@ function SingleFileUploadArea({
           </div>
           <div>
             <p className="break-all text-lg font-bold text-gray-800 dark:text-gray-100">
-              {file.name}
+              {fileInfo.name}
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {parsedRowsCount} سجل قابل للمعالجة • {formatFileSize(file.size)}
+              {parsedRowsCount} سجل قابل للمعالجة • {formatFileSize(fileInfo.size)}
             </p>
           </div>
           <button

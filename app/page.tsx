@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import { getBlacklist, BlacklistEntry } from "@/lib/blacklist";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,14 +16,167 @@ import {
   Tooltip,
 } from "recharts";
 
-interface MonthlyData {
-  name: string;
-  count: number;
-  cumulative: number;
-  key: string;
-  year: number;
-  monthIndex: number;
+// ADDED: Time Range Selector
+export type TimeRange = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+
+function getWeekNumber(d: Date) {
+  const dObj = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = dObj.getUTCDay() || 7;
+  dObj.setUTCDate(dObj.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dObj.getUTCFullYear(), 0, 1));
+  return Math.ceil((((dObj.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
+
+function getISOWeekBounds(d: Date) {
+  const day = d.getDay() || 7; // 1-7 (Mon-Sun)
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day + 1);
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  return { monday, sunday };
+}
+
+function buildChartData(
+  entries: BlacklistEntry[],
+  range: TimeRange
+): { label: string; fullLabel?: string; additions: number; cumulative: number; key: string; rawDate: Date }[] {
+  const now = new Date();
+  const buckets: { label: string; fullLabel?: string; key: string; date: Date }[] = [];
+
+  if (range === "daily") {
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const fullLabel = `اليوم: ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      buckets.push({ label, fullLabel, key, date: d });
+    }
+  } else if (range === "weekly") {
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i * 7));
+      const weekNum = getWeekNumber(d);
+      const { monday, sunday } = getISOWeekBounds(d);
+      
+      const key = `${d.getFullYear()}-W${weekNum}`;
+      const label = `أسبوع ${weekNum}`;
+      
+      const startStr = `${String(monday.getDate()).padStart(2, '0')}/${String(monday.getMonth() + 1).padStart(2, '0')}/${monday.getFullYear()}`;
+      const endStr = `${String(sunday.getDate()).padStart(2, '0')}/${String(sunday.getMonth() + 1).padStart(2, '0')}/${sunday.getFullYear()}`;
+      const fullLabel = `الأسبوع ${weekNum} من ${startStr} إلى ${endStr}`;
+      
+      buckets.push({ label, fullLabel, key, date: d });
+    }
+  } else if (range === "monthly") {
+    const monthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const label = monthNames[d.getMonth()];
+      const fullLabel = `شهر ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      buckets.push({ label, fullLabel, key, date: d });
+    }
+  } else if (range === "quarterly") {
+    const currentQ = Math.floor(now.getMonth() / 3);
+    for (let i = 3; i >= 0; i--) {
+      let y = now.getFullYear();
+      let q = currentQ - i;
+      if (q < 0) {
+        y -= 1;
+        q += 4;
+      }
+      const d = new Date(y, q * 3, 1);
+      const key = `${y}-Q${q}`;
+      const label = `ر${q + 1} ${y}`;
+      const fullLabel = `الربع ${q + 1} عام ${y}`;
+      buckets.push({ label, fullLabel, key, date: d });
+    }
+  } else if (range === "yearly") {
+    for (let i = 2; i >= 0; i--) {
+      const y = now.getFullYear() - i;
+      const d = new Date(y, 0, 1);
+      const key = `${y}`;
+      const label = `${y}`;
+      const fullLabel = `عام ${y}`;
+      buckets.push({ label, fullLabel, key, date: d });
+    }
+  }
+
+  const countsMap = new Map<string, number>();
+  buckets.forEach(b => countsMap.set(b.key, 0));
+
+  const startDate = buckets[0].date;
+  let baseCumulative = 0;
+
+  entries.forEach(entry => {
+    const d = entry.addedAt;
+    if (d < startDate) {
+      baseCumulative++;
+      return;
+    }
+
+    let key = "";
+    if (range === "daily") key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    else if (range === "weekly") key = `${d.getFullYear()}-W${getWeekNumber(d)}`;
+    else if (range === "monthly") key = `${d.getFullYear()}-${d.getMonth()}`;
+    else if (range === "quarterly") key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3)}`;
+    else if (range === "yearly") key = `${d.getFullYear()}`;
+
+    if (countsMap.has(key)) {
+      countsMap.set(key, (countsMap.get(key) || 0) + 1);
+    } else if (d < startDate) {
+      // Fallback: If logic mismatch assigns it an older week
+      baseCumulative++;
+    }
+  });
+
+  const result = [];
+  let cumulative = baseCumulative;
+  for (const b of buckets) {
+    const additions = countsMap.get(b.key) || 0;
+    cumulative += additions;
+    result.push({
+      label: b.label,
+      fullLabel: b.fullLabel,
+      additions: additions,
+      cumulative: cumulative,
+      key: b.key,
+      rawDate: b.date
+    });
+  }
+
+  return result;
+}
+
+// ADDED: Custom Tooltip for charts
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload: {
+      fullLabel?: string;
+    };
+  }>;
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className=" dir-rtl bg-white dark:bg-gray-800/95 backdrop-blur-sm p-3 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl border-l-4 border-l-teal-500 min-w-[140px]">
+        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-right border-b border-gray-100 dark:border-gray-700 pb-1">
+          {data.fullLabel || label}
+        </p>
+        {payload.map((entry, index) => (
+          <div key={index} className="flex justify-between items-center gap-4 flex-row-reverse mt-1">
+            <span className="text-xs font-bold text-teal-600 dark:text-teal-400">{entry.name}:</span>
+            <span className="text-sm font-black text-gray-900 dark:text-white">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 function ChartContainer({
   children,
@@ -75,7 +228,8 @@ export default function Dashboard() {
   const canWrite = user?.role === "admin" || user?.role === "employee";
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<BlacklistEntry[]>([]);
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  // ADDED: Time Range Selector
+  const [selectedRange, setSelectedRange] = useState<TimeRange>("monthly");
 
   // Metrics
   const [totalCount, setTotalCount] = useState(0);
@@ -92,48 +246,17 @@ export default function Dashboard() {
         const now = new Date();
         const thisMonth = now.getMonth();
         const thisYear = now.getFullYear();
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
         let currentMonthCount = 0;
         let expiringCount = 0;
-
-        // Month names in Arabic
-        const monthNames = [
-          "يناير",
-          "فبراير",
-          "مارس",
-          "أبريل",
-          "مايو",
-          "يونيو",
-          "يوليو",
-          "أغسطس",
-          "سبتمبر",
-          "أكتوبر",
-          "نوفمبر",
-          "ديسمبر",
-        ];
-
-        // Prepare last 6 months buckets
-        const last6Months: {
-          [key: string]: { count: number; name: string; monthObj: Date };
-        } = {};
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const key = `${d.getFullYear()}-${d.getMonth()}`;
-          last6Months[key] = {
-            count: 0,
-            name: monthNames[d.getMonth()],
-            monthObj: d,
-          };
-        }
+        let totalLast6Months = 0;
 
         data.forEach((entry) => {
           const date = entry.addedAt;
 
           // This month count
-          if (
-            date.getMonth() === thisMonth &&
-            date.getFullYear() === thisYear
-          ) {
+          if (date.getMonth() === thisMonth && date.getFullYear() === thisYear) {
             currentMonthCount++;
           }
 
@@ -144,50 +267,16 @@ export default function Dashboard() {
             expiringCount++;
           }
 
-          // Chart data grouping
-          const key = `${date.getFullYear()}-${date.getMonth()}`;
-          if (last6Months[key]) {
-            last6Months[key].count++;
+          // Total additions in last 6 months for average
+          if (date >= sixMonthsAgo) {
+            totalLast6Months++;
           }
-        });
-
-        // Compute cumulative and chart data
-        const sortedKeys = Object.keys(last6Months).sort(
-          (a, b) =>
-            last6Months[a].monthObj.getTime() -
-            last6Months[b].monthObj.getTime(),
-        );
-
-        // To get accurate cumulative growth, we need the total entries BEFORE the 6 months period.
-        let baseCumulative = data.length;
-        sortedKeys.forEach((k) => {
-          baseCumulative -= last6Months[k].count;
-        });
-
-        const mData: MonthlyData[] = [];
-        let currentCumulative = baseCumulative;
-        let totalLast6Months = 0;
-
-        sortedKeys.forEach((key) => {
-          const count = last6Months[key].count;
-          currentCumulative += count;
-          totalLast6Months += count;
-
-          mData.push({
-            name: last6Months[key].name,
-            count: count,
-            cumulative: currentCumulative,
-            key: key,
-            year: last6Months[key].monthObj.getFullYear(),
-            monthIndex: last6Months[key].monthObj.getMonth(),
-          });
         });
 
         setTotalCount(data.length);
         setThisMonthCount(currentMonthCount);
         setExpiringSoonCount(expiringCount);
         setAvgMonthlyAdditions(Math.round(totalLast6Months / 6));
-        setMonthlyData(mData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -197,6 +286,12 @@ export default function Dashboard() {
 
     fetchData();
   }, []);
+
+  // ADDED: Time Range Selector - Memoized dynamically derived chart data
+  const chartData = useMemo(() => {
+    if (entries.length === 0) return [];
+    return buildChartData(entries, selectedRange);
+  }, [entries, selectedRange]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("ar-EG", {
@@ -218,22 +313,28 @@ export default function Dashboard() {
     let sheetName = "البلاك ليست كاملة";
 
     if (key !== "all") {
-      const monthData = monthlyData.find((m) => m.key === key);
-      if (!monthData) return;
+      const bucket = chartData.find((m) => m.key === key);
+      if (!bucket) return;
 
-      filteredEntries = entries.filter(
-        (e) =>
-          e.addedAt.getMonth() === monthData.monthIndex &&
-          e.addedAt.getFullYear() === monthData.year,
-      );
+      filteredEntries = entries.filter((e) => {
+        const d = e.addedAt;
+        let entryKey = "";
+        if (selectedRange === "daily") entryKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        else if (selectedRange === "weekly") entryKey = `${d.getFullYear()}-W${getWeekNumber(d)}`;
+        else if (selectedRange === "monthly") entryKey = `${d.getFullYear()}-${d.getMonth()}`;
+        else if (selectedRange === "quarterly") entryKey = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3)}`;
+        else if (selectedRange === "yearly") entryKey = `${d.getFullYear()}`;
+        
+        return entryKey === key;
+      });
 
       if (filteredEntries.length === 0) {
-        alert("لا توجد بيانات متاحة لهذا الشهر.");
+        alert("لا توجد بيانات متاحة في هذا النطاق.");
         return;
       }
 
-      filename = `Blacklist_${monthData.name}_${monthData.year}.xlsx`;
-      sheetName = `إضافات ${monthData.name}`;
+      filename = `Blacklist_${bucket.label.replace(/\//g, '-')}.xlsx`;
+      sheetName = bucket.label;
     }
 
     const rows = [
@@ -393,9 +494,9 @@ export default function Dashboard() {
                 تصدير إكسيل...
               </option>
               <option value="all">تصدير الكل</option>
-              {monthlyData.map((m, i) => (
-                <option key={`month-${i}-${m.key}`} value={m.key}>
-                  شهر {m.name} {m.year} ({m.count})
+              {chartData.map((m, i) => (
+                <option key={`export-${i}-${m.key}`} value={m.key}>
+                  {m.label} ({m.additions})
                 </option>
               ))}
             </select>
@@ -478,6 +579,34 @@ export default function Dashboard() {
         />
       </section>
 
+      {/* ADDED: Time Range Selector */}
+      <section className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 border-t border-gray-100 dark:border-gray-800/50 mt-4">
+        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+          عرض البيانات حسب:
+        </span>
+        <div className="grid grid-cols-5 bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl w-full sm:w-auto shadow-sm">
+          {[
+            { label: "يومي", value: "daily" },
+            { label: "أسبوعي", value: "weekly" },
+            { label: "شهري", value: "monthly" },
+            { label: "ربع سنوي", value: "quarterly" },
+            { label: "سنوي", value: "yearly" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSelectedRange(opt.value as TimeRange)}
+              className={`px-1.5 sm:px-5 py-2 text-[10px] sm:text-sm font-bold rounded-lg whitespace-nowrap transition-all duration-200 ${
+                selectedRange === opt.value
+                  ? "bg-teal-600 text-white shadow-md shadow-teal-600/20 scale-100"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:scale-[0.98]"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Section 2 - Charts Row */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" dir="ltr">
         {/* Chart A: Line Chart */}
@@ -490,7 +619,7 @@ export default function Dashboard() {
               <LineChart
                 width={width}
                 height={height}
-                data={monthlyData}
+                data={chartData}
                 margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
               >
                 <CartesianGrid
@@ -500,7 +629,7 @@ export default function Dashboard() {
                   opacity={0.2}
                 />
                 <XAxis
-                  dataKey="name"
+                  dataKey="label"
                   tick={{ fill: "#6B7280", fontSize: 14 }}
                   tickLine={false}
                   axisLine={false}
@@ -511,18 +640,10 @@ export default function Dashboard() {
                   axisLine={false}
                 />
                 <Tooltip
+                  content={<CustomTooltip />}
                   cursor={{ stroke: "#1D9E75", strokeWidth: 1 }}
-                  labelStyle={{
-                    color: "rgb(79 145 124)",
-                  }}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                    direction: "rtl",
-                  }}
-                  itemStyle={{ color: "#1D9E75", fontWeight: "bold" }}
                 />
+
                 <Line
                   type="monotone"
                   dataKey="cumulative"
@@ -545,14 +666,14 @@ export default function Dashboard() {
         {/* Chart B: Bar Chart */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">
-            الإضافات الشهرية
+            الإضافات الجديدة
           </h2>
           <ChartContainer>
             {({ width, height }) => (
               <BarChart
                 width={width}
                 height={height}
-                data={monthlyData}
+                data={chartData}
                 margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
               >
                 <CartesianGrid
@@ -562,7 +683,7 @@ export default function Dashboard() {
                   opacity={0.2}
                 />
                 <XAxis
-                  dataKey="name"
+                  dataKey="label"
                   tick={{ fill: "#6B7280", fontSize: 14 }}
                   tickLine={false}
                   axisLine={false}
@@ -574,17 +695,11 @@ export default function Dashboard() {
                   allowDecimals={false}
                 />
                 <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                    direction: "rtl",
-                  }}
-                  itemStyle={{ color: "#1D9E75", fontWeight: "bold" }}
+                  content={<CustomTooltip />}
                   cursor={{ fill: "rgba(29, 158, 117, 0.1)" }}
                 />
                 <Bar
-                  dataKey="count"
+                  dataKey="additions"
                   name="إضافات جديدة"
                   fill="#1D9E75"
                   radius={[4, 4, 0, 0]}
