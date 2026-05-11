@@ -90,21 +90,55 @@ function OrganizePageSkeleton() {
       className="flex-1 w-full p-6 sm:p-10 font-sans text-gray-900 dark:text-gray-100"
       dir="rtl"
     >
-      <div className="mx-auto max-w-4xl w-full animate-pulse">
+      <div className="mx-auto max-w-4xl w-full">
         <div className="mb-8 flex items-center gap-3">
-          <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30" />
-          <div className="space-y-3">
-            <div className="h-8 w-48 rounded-xl bg-gray-200 dark:bg-gray-700" />
-            <div className="h-4 w-72 max-w-[70vw] rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl shadow-sm">
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+              تنظيم شيت الحضور
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              رفع شيت Google Forms العشوائي وتنزيله منظماً حسب الـ Workshop
+            </p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-800/80">
             <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-10 dark:border-gray-700 dark:bg-gray-800/50">
-              <div className="mb-3 h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30" />
-              <div className="h-4 w-64 rounded-full bg-gray-200 dark:bg-gray-700" />
-              <div className="mt-3 h-3 w-32 rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="mb-3 rounded-full bg-blue-100 p-3 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                تجهيز واجهة رفع شيت Google Forms...
+              </p>
+              <div className="mt-3 h-3 w-32 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
             </div>
           </div>
 

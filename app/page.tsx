@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import { getBlacklist, BlacklistEntry } from "@/lib/blacklist";
 import { useAuth } from "@/hooks/useAuth";
-import * as XLSX from "xlsx";
 import {
   LineChart,
   Line,
@@ -180,8 +179,10 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 function ChartContainer({
   children,
+  loading = false,
 }: {
   children: (size: { width: number; height: number }) => React.ReactNode;
+  loading?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -212,13 +213,77 @@ function ChartContainer({
   return (
     <div
       ref={containerRef}
-      className="relative h-full min-h-[220px] w-full min-w-0 flex-1"
+      className="relative h-full min-h-[220px] w-full min-w-0 flex-1 overflow-hidden"
     >
-      {size.width > 0 && size.height > 0 ? (
+      {loading ? (
+        <DashboardChartSkeleton />
+      ) : size.width > 0 && size.height > 0 ? (
         children(size)
       ) : (
         <div className="h-full w-full animate-pulse rounded-xl bg-gray-100 dark:bg-gray-700/40" />
       )}
+    </div>
+  );
+}
+
+function DashboardChartSkeleton() {
+  return (
+    <div className="flex h-full min-h-[220px] w-full flex-col justify-end gap-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-900/20">
+      <div className="flex h-full items-end gap-3" dir="ltr">
+        {[52, 72, 44, 86, 66, 92, 58].map((height, index) => (
+          <div
+            key={`${height}-${index}`}
+            className="flex-1 rounded-t-lg bg-gray-200/90 dark:bg-gray-700/70"
+            style={{ height: `${height}%` }}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-6 gap-3">
+        {[0, 1, 2, 3, 4, 5].map((item) => (
+          <div
+            key={item}
+            className="h-2 rounded-full bg-gray-200 dark:bg-gray-700"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardTableSkeleton() {
+  return (
+    <div className="min-h-[436px] overflow-hidden">
+      <table className="w-full text-right text-sm">
+        <thead className="border-b border-gray-100 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+          <tr>
+            <th className="px-6 py-4 font-semibold">الاسم</th>
+            <th className="px-6 py-4 font-semibold">الرقم القومي</th>
+            <th className="px-6 py-4 font-semibold">تاريخ الإضافة</th>
+            <th className="px-6 py-4 font-semibold">الحالة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 7 }).map((_, index) => (
+            <tr
+              key={index}
+              className="border-b border-gray-50 last:border-0 dark:border-gray-700/50"
+            >
+              <td className="px-6 py-4">
+                <div className="h-4 w-40 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td className="px-6 py-4">
+                <div className="h-4 w-32 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td className="px-6 py-4">
+                <div className="h-4 w-28 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+              </td>
+              <td className="px-6 py-4">
+                <div className="h-6 w-24 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -307,7 +372,7 @@ export default function Dashboard() {
     return diffDays > 90;
   };
 
-  const downloadExcel = (key: string) => {
+  const downloadExcel = async (key: string) => {
     let filteredEntries = entries;
     let filename = "Blacklist_All.xlsx";
     let sheetName = "البلاك ليست كاملة";
@@ -346,38 +411,12 @@ export default function Dashboard() {
       ]),
     ];
 
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     XLSX.writeFile(wb, filename);
   };
-
-  if (loading) {
-    return (
-      <main className="flex-1 flex items-center justify-center font-sans text-gray-900 dark:text-gray-100">
-        <svg
-          className="animate-spin h-12 w-12 text-blue-600 dark:text-blue-400"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          ></circle>
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
-      </main>
-    );
-  }
 
   const recentEntries = [...entries]
     .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
@@ -396,7 +435,7 @@ export default function Dashboard() {
 
       {/* Quick Actions Row — hidden for viewers */}
       {canWrite && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 sm:mb-8">
+        <div className="grid min-h-[280px] grid-cols-1 gap-4 sm:min-h-[120px] sm:grid-cols-2 lg:min-h-[52px] lg:grid-cols-5 mb-6 sm:mb-8">
           <Link
             href="/attendance"
             className="px-6 py-4 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow font-semibold transition-colors flex items-center justify-center sm:justify-start gap-2"
@@ -484,7 +523,7 @@ export default function Dashboard() {
               className="bg-transparent text-sm font-semibold text-gray-800 dark:text-gray-200 outline-none px-4 py-4 sm:py-3 flex-1 border-l border-gray-100 dark:border-gray-700 appearance-none cursor-pointer"
               onChange={(e) => {
                 if (e.target.value) {
-                  downloadExcel(e.target.value);
+                  void downloadExcel(e.target.value);
                   e.target.value = "";
                 }
               }}
@@ -524,6 +563,7 @@ export default function Dashboard() {
         <StatCard
           title="إجمالي البلاك ليست"
           value={totalCount}
+          loading={loading}
           icon={
             <path
               strokeLinecap="round"
@@ -538,6 +578,7 @@ export default function Dashboard() {
         <StatCard
           title="إضافات هذا الشهر"
           value={thisMonthCount}
+          loading={loading}
           icon={
             <path
               strokeLinecap="round"
@@ -552,6 +593,7 @@ export default function Dashboard() {
         <StatCard
           title="سيُحذفون قريباً"
           value={expiringSoonCount}
+          loading={loading}
           icon={
             <path
               strokeLinecap="round"
@@ -566,6 +608,7 @@ export default function Dashboard() {
         <StatCard
           title="متوسط الإضافة الشهرية"
           value={avgMonthlyAdditions}
+          loading={loading}
           icon={
             <path
               strokeLinecap="round"
@@ -610,11 +653,11 @@ export default function Dashboard() {
       {/* Section 2 - Charts Row */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" dir="ltr">
         {/* Chart A: Line Chart */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] min-h-[300px] sm:h-96 sm:min-h-96 w-full min-w-0 overflow-hidden contain-layout">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">
             نمو البلاك ليست (التراكمي)
           </h2>
-          <ChartContainer>
+          <ChartContainer loading={loading}>
             {({ width, height }) => (
               <LineChart
                 width={width}
@@ -664,11 +707,11 @@ export default function Dashboard() {
         </div>
 
         {/* Chart B: Bar Chart */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] sm:h-96 w-full min-w-0 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col h-[300px] min-h-[300px] sm:h-96 sm:min-h-96 w-full min-w-0 overflow-hidden contain-layout">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 text-right font-sans">
             الإضافات الجديدة
           </h2>
-          <ChartContainer>
+          <ChartContainer loading={loading}>
             {({ width, height }) => (
               <BarChart
                 width={width}
@@ -711,7 +754,7 @@ export default function Dashboard() {
       </section>
 
       {/* Section 3 - Recent Blacklist Table */}
-      <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col w-full min-w-0">
+      <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col w-full min-w-0 min-h-[508px]">
         <div className="px-4 sm:px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">
             أحدث الإضافات
@@ -723,9 +766,11 @@ export default function Dashboard() {
             عرض الكل &rarr;
           </Link>
         </div>
-        <div className="overflow-x-auto w-full">
-          {recentEntries.length === 0 ? (
-            <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+        <div className="overflow-x-auto w-full min-h-[436px]">
+          {loading ? (
+            <DashboardTableSkeleton />
+          ) : recentEntries.length === 0 ? (
+            <div className="min-h-[436px] p-12 text-center text-gray-500 dark:text-gray-400 flex items-center justify-center">
               لا توجد بيانات حالياً في البلاك ليست
             </div>
           ) : (
@@ -788,6 +833,7 @@ function StatCard({
   color,
   bg,
   border,
+  loading = false,
 }: {
   title: string;
   value: string | number;
@@ -795,18 +841,23 @@ function StatCard({
   color: string;
   bg: string;
   border: string;
+  loading?: boolean;
 }) {
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex items-center justify-between gap-4 w-full min-w-0`}
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex min-h-[112px] sm:min-h-[128px] items-center justify-between gap-4 w-full min-w-0 contain-layout"
     >
       <div className="space-y-1 min-w-0">
         <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
           {title}
         </p>
-        <p className={`text-2xl sm:text-3xl font-extrabold ${color} truncate`}>
-          {value}
-        </p>
+        {loading ? (
+          <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700 sm:h-9" />
+        ) : (
+          <p className={`text-2xl sm:text-3xl font-extrabold ${color} truncate tabular-nums`}>
+            {value}
+          </p>
+        )}
       </div>
       <div
         className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full ${bg} ${color} flex items-center justify-center border ${border}`}
