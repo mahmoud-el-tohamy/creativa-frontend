@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useReducer, useRef } from "react";
+import dynamic from "next/dynamic";
 import RouteGuard from "@/components/RouteGuard";
-import { readExcelRaw, organizeAndDownload } from "@/lib/excel";
-import { logAction } from "@/lib/audit";
 import { useAuth } from "@/hooks/useAuth";
+
+const WorkshopBreakdownTable = dynamic(
+  () => import("@/components/organize/WorkshopBreakdownTable"),
+  {
+    loading: () => <WorkshopBreakdownSkeleton />,
+  },
+);
 
 // State shape
 type State = {
@@ -71,6 +77,104 @@ const REQUIRED_COLUMNS = [
   'Name "In English"',
 ];
 
+function normalizeHeader(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function OrganizePageSkeleton() {
+  return (
+    <main
+      className="flex-1 w-full p-6 sm:p-10 font-sans text-gray-900 dark:text-gray-100"
+      dir="rtl"
+    >
+      <div className="mx-auto max-w-4xl w-full animate-pulse">
+        <div className="mb-8 flex items-center gap-3">
+          <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30" />
+          <div className="space-y-3">
+            <div className="h-8 w-48 rounded-xl bg-gray-200 dark:bg-gray-700" />
+            <div className="h-4 w-72 max-w-[70vw] rounded-full bg-gray-200 dark:bg-gray-700" />
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-800/80">
+            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 py-10 dark:border-gray-700 dark:bg-gray-800/50">
+              <div className="mb-3 h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30" />
+              <div className="h-4 w-64 rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="mt-3 h-3 w-32 rounded-full bg-gray-200 dark:bg-gray-700" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-gray-800/30">
+            <div className="mb-4 h-4 w-36 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="space-y-3">
+                  <div className="h-8 w-8 rounded-full bg-white shadow-sm dark:bg-gray-700" />
+                  <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
+                  <div className="h-3 w-2/3 rounded-full bg-gray-200 dark:bg-gray-700" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function ProcessingSkeleton() {
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((item) => (
+          <div
+            key={item}
+            className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-800/80"
+          >
+            <div className="mb-3 h-3 w-20 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-7 w-12 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-800/80">
+        <div className="mb-4 h-4 w-32 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+        <div className="flex flex-wrap gap-2">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="h-7 w-32 animate-pulse rounded-md bg-gray-100 dark:bg-gray-700"
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkshopBreakdownSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-800/80">
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="h-4 w-32 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+      </div>
+      <div className="space-y-3 p-4">
+        {[0, 1, 2, 3].map((item) => (
+          <div key={item} className="grid grid-cols-3 gap-4">
+            <div className="h-4 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-4 w-12 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-4 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function OrganizePage() {
   const [state, dispatch] = useReducer(reducer, {
     file: null,
@@ -105,29 +209,24 @@ export default function OrganizePage() {
     dispatch({ type: "SET_FILE", file });
 
     try {
+      const { readExcelRaw } = await import("@/lib/excel");
       const { headers, rows } = await readExcelRaw(file);
 
       const missing = REQUIRED_COLUMNS.filter(
         (req) =>
           !headers.some(
-            (h) =>
-              h.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ") ===
-              req.toLowerCase(),
+            (h) => normalizeHeader(h) === req.toLowerCase(),
           ),
       );
 
       const workshopHeader =
         headers.find(
-          (h) =>
-            h.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ") ===
-            "workshop name",
+          (h) => normalizeHeader(h) === "workshop name",
         ) || "Workshop Name";
 
       const timestampHeader =
         headers.find(
-          (h) =>
-            h.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ") ===
-            "timestamp",
+          (h) => normalizeHeader(h) === "timestamp",
         ) || "Timestamp";
 
       const groups = new Map<string, Record<string, unknown>[]>();
@@ -183,38 +282,43 @@ export default function OrganizePage() {
 
     dispatch({ type: "START_EXPORT" });
 
-    // Simulate slight delay for UI feedback
-    setTimeout(() => {
-      try {
-        organizeAndDownload(state.rows, state.headers, state.file!.name);
+    try {
+      const [{ organizeAndDownload }, { logAction }] = await Promise.all([
+        import("@/lib/excel"),
+        import("@/lib/audit"),
+      ]);
 
-        if (user) {
-          logAction({
-            action: "sheet_organize",
-            details: `تم تنظيم شيت حضور — ${state.rows.length} سجل موزعة على ${state.workshopGroups.size} Workshop`,
-            performedBy: user.uid,
-            performedByName: user.displayName,
-            performedByRole: user.role,
-          });
-        }
+      organizeAndDownload(state.rows, state.headers, state.file.name);
 
-        dispatch({ type: "EXPORT_DONE" });
-        showToast("تم تنزيل الشيت المنظم بنجاح", "success");
-      } catch {
-        showToast("حدث خطأ أثناء التنظيم", "error");
-        dispatch({
-          type: "PARSE_SUCCESS",
-          headers: state.headers,
-          rows: state.rows,
-          groups: state.workshopGroups,
-          missing: state.missingColumns,
-        }); // revert
+      if (user) {
+        await logAction({
+          action: "sheet_organize",
+          details: `تم تنظيم شيت حضور — ${state.rows.length} سجل موزعة على ${state.workshopGroups.size} Workshop`,
+          performedBy: user.uid,
+          performedByName: user.displayName,
+          performedByRole: user.role,
+        });
       }
-    }, 400);
+
+      dispatch({ type: "EXPORT_DONE" });
+      showToast("تم تنزيل الشيت المنظم بنجاح", "success");
+    } catch {
+      showToast("حدث خطأ أثناء التنظيم", "error");
+      dispatch({
+        type: "PARSE_SUCCESS",
+        headers: state.headers,
+        rows: state.rows,
+        groups: state.workshopGroups,
+        missing: state.missingColumns,
+      });
+    }
   };
 
   return (
-    <RouteGuard allowedRoles={["admin", "employee"]}>
+    <RouteGuard
+      allowedRoles={["admin", "employee"]}
+      fallback={<OrganizePageSkeleton />}
+    >
       <main
         className="flex-1 w-full p-6 sm:p-10 font-sans text-gray-900 dark:text-gray-100"
         dir="rtl"
@@ -353,6 +457,8 @@ export default function OrganizePage() {
                 </p>
               )}
             </div>
+
+            {state.status === "parsing" && <ProcessingSkeleton />}
 
             {/* Preview Section */}
             {(state.status === "ready" ||
@@ -555,96 +661,5 @@ export default function OrganizePage() {
         </div>
       </main>
     </RouteGuard>
-  );
-}
-
-// Sub-component
-function WorkshopBreakdownTable({
-  groups,
-  total,
-}: {
-  groups: Map<string, Record<string, unknown>[]>;
-  total: number;
-}) {
-  const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
-    if (a === "غير محدد") return 1;
-    if (b === "غير محدد") return -1;
-    return a.localeCompare(b);
-  });
-
-  // Tailwind v4 doesn't support arbitrary dynamic classes easily without full class definitions or safelisting.
-  // We use inline styles for the variable width progress bar, but for colors we should ensure they exist.
-  // Tailwind v4 uses standard colors.
-  const bgColors = [
-    "bg-teal-500",
-    "bg-purple-500",
-    "bg-amber-500",
-    "bg-rose-500",
-    "bg-blue-500",
-  ];
-
-  return (
-    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-800/80 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-        <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200">
-          الـ Workshops المكتشفة
-        </h3>
-      </div>
-      <div className="overflow-x-auto max-h-[250px] overflow-y-auto">
-        <table className="w-full text-sm text-right">
-          <thead className="bg-white dark:bg-gray-800 sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700">
-            <tr>
-              <th className="px-4 py-2 font-medium text-gray-500 dark:text-gray-400 w-1/2">
-                Workshop Name
-              </th>
-              <th className="px-4 py-2 font-medium text-gray-500 dark:text-gray-400">
-                عدد المتدربين
-              </th>
-              <th className="px-4 py-2 font-medium text-gray-500 dark:text-gray-400 w-1/3">
-                نسبة من الإجمالي
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-            {sortedKeys.map((key, idx) => {
-              const count = groups.get(key)!.length;
-              const percent = total > 0 ? (count / total) * 100 : 0;
-              const colorClass = bgColors[idx % bgColors.length];
-              return (
-                <tr
-                  key={key}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                >
-                  <td className="px-4 py-2.5 font-semibold text-gray-800 dark:text-gray-200">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${colorClass}`} />
-                      <span className="truncate max-w-[400px]" title={key}>
-                        {key}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300 font-medium">
-                    {count}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${colorClass}`}
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-500 font-medium w-8">
-                        {percent.toFixed(0)}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }

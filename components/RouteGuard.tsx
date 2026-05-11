@@ -1,18 +1,21 @@
 "use client";
 
 import React from "react";
-import { UserRole } from "@/lib/auth";
+import type { UserRole } from "@/lib/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface RouteGuardProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
+  fallback?: React.ReactNode;
 }
 
-export default function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
+export default function RouteGuard({ children, allowedRoles, fallback }: RouteGuardProps) {
   const { user, loading } = useRequireAuth(allowedRoles);
 
   if (loading) {
+    if (fallback) return <>{fallback}</>;
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F8F7] dark:bg-gray-900 w-full h-full">
         <svg className="animate-spin h-12 w-12 text-blue-600 dark:text-blue-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
