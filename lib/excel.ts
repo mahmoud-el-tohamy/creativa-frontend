@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import XLSX from "xlsx-js-style";
 import { validateNationalId } from "./validation";
 
 export interface Person {
@@ -312,9 +312,32 @@ export function organizeAndDownload(
     groups.get(groupKey)!.push(row);
   });
 
+  const getSortTime = (key: string) => {
+    if (key === "غير محدد") return Infinity;
+    const row = groups.get(key)?.[0];
+    if (!row) return 0;
+    const rawVal = row[timestampHeader];
+    if (rawVal instanceof Date) {
+      return new Date(rawVal.getFullYear(), rawVal.getMonth(), rawVal.getDate()).getTime();
+    }
+    if (rawVal) {
+      const d = new Date(String(rawVal).split(" ")[0]);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    return 0;
+  };
+
   const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
     if (a === "غير محدد") return 1;
     if (b === "غير محدد") return -1;
+    
+    const timeA = getSortTime(a);
+    const timeB = getSortTime(b);
+    
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+    
     return a.localeCompare(b);
   });
 
@@ -394,10 +417,7 @@ export function organizeAndDownload(
       font = { name: "Arial", sz: 12, bold: true, color: { rgb: "FFFFFF" } };
       fill = { fgColor: { rgb: "0F6E56" } };
       alignment = { vertical: "center", horizontal: "left" };
-    } else if (separatorRowIndices.has(R)) {
-      // Separator
-      fill = { fgColor: { rgb: "000000" } };
-    } else {
+    } else if (!separatorRowIndices.has(R)) {
       // Data row
       const dataRowInfo = dataRowIndices.find((dr) => dr.r === R);
       if (dataRowInfo) {
@@ -413,6 +433,20 @@ export function organizeAndDownload(
       
       const headerName = String(headers[C] || "").toLowerCase().trim();
 
+      // Special handling for separator row
+      if (separatorRowIndices.has(R)) {
+        ws[cellRef].s = {
+          fill: { patternType: "solid", fgColor: { rgb: "000000" } },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        };
+        continue;
+      }
+
       // Prevent large numbers (like National IDs or phone numbers) from
       // turning into scientific notation (e.g. 3.03E+13).
       if (ws[cellRef].t === "n" && !ws[cellRef].z) {
@@ -427,7 +461,7 @@ export function organizeAndDownload(
 
       ws[cellRef].s = {
         font,
-        fill,
+        fill: { ...fill, patternType: "solid" },
         alignment,
         border: {
           top: { style: "thin", color: { rgb: "E5E7EB" } },

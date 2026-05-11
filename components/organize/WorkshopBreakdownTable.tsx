@@ -9,9 +9,37 @@ export default function WorkshopBreakdownTable({
   groups,
   total,
 }: WorkshopBreakdownTableProps) {
+  const getSortTime = (key: string) => {
+    if (key === "غير محدد") return Infinity;
+    const row = groups.get(key)?.[0];
+    if (!row) return 0;
+    
+    // Find timestamp key since we don't have it directly passed
+    const tsKey = Object.keys(row).find(k => k.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ") === "timestamp");
+    if (!tsKey) return 0;
+    
+    const rawVal = row[tsKey];
+    if (rawVal instanceof Date) {
+      return new Date(rawVal.getFullYear(), rawVal.getMonth(), rawVal.getDate()).getTime();
+    }
+    if (rawVal) {
+      const d = new Date(String(rawVal).split(" ")[0]);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    return 0;
+  };
+
   const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
     if (a === "غير محدد") return 1;
     if (b === "غير محدد") return -1;
+    
+    const timeA = getSortTime(a);
+    const timeB = getSortTime(b);
+    
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+    
     return a.localeCompare(b);
   });
 
