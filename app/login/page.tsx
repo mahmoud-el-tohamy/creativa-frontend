@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { getUserProfile, getEmailByUsername } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+import { getEmailByUsername, getUserProfile } from "@/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -19,9 +20,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Resolve the login email:
-      // If the input contains "@" it's already an email — use it directly.
-      // Otherwise treat it as a username and look up the real email from Firestore.
+      // If the identifier is not an email, resolve it from the stored username.
       let loginEmail: string;
       if (email.includes("@")) {
         loginEmail = email.trim();
@@ -35,7 +34,11 @@ export default function LoginPage() {
         loginEmail = found;
       }
 
-      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        loginEmail,
+        password,
+      );
 
       const profile = await getUserProfile(userCredential.user.uid);
       if (!profile || !profile.isActive) {
@@ -45,8 +48,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Set cookie for proxy (route protection)
-      document.cookie = "auth-session=active; path=/; max-age=86400; samesite=strict";
+      document.cookie =
+        "auth-session=active; path=/; max-age=86400; samesite=strict";
 
       router.replace("/");
     } catch (err) {
@@ -57,81 +60,214 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="h-screen overflow-hidden flex items-center justify-center bg-[#F8F8F7] dark:bg-gray-900 p-4 font-sans" dir="rtl">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800">
-        <div className="p-8 text-center bg-blue-600 dark:bg-blue-700 text-white">
-          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm shadow-inner">
-            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Hi, Welcome to Creativa</h1>
-          <p className="text-blue-100 mt-2 font-medium opacity-90">Creativa Innovation Hub - Mansoura Branch</p>
-        </div>
-
-        <div className="p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div role="alert" className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm font-medium border border-red-100 dark:border-red-800 flex items-center gap-2">
-                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="login-identifier" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                البريد الإلكتروني أو اسم المستخدم
-              </label>
-              <input
-                id="login-identifier"
-                name="identifier"
-                type="text"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
-                placeholder="البريد الإلكتروني أو اسم المستخدم"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="login-password" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                كلمة المرور
-              </label>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
-                placeholder="أدخل كلمة المرور"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all duration-200 disabled:opacity-70 flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  جاري تسجيل الدخول...
-                </>
-              ) : (
-                "تسجيل الدخول"
-              )}
-            </button>
-          </form>
-        </div>
+    <main
+      className="relative flex min-h-screen overflow-hidden bg-[#070B14] px-4 py-8 font-sans text-white sm:px-6 lg:px-8"
+      dir="rtl"
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(29,158,117,0.22),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(37,99,235,0.20),transparent_30%),radial-gradient(circle_at_50%_90%,rgba(15,23,42,0.95),transparent_45%)]" />
+        <div className="absolute inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-white/8 to-transparent" />
       </div>
-    </div>
+
+      <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1fr_460px]">
+        <div className="hidden lg:block">
+          <div className="max-w-xl">
+            <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-teal-100 shadow-2xl shadow-teal-950/30 backdrop-blur-xl">
+              <span className="h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_18px_rgba(45,212,191,.9)]" />
+              منصة داخلية آمنة لإدارة عمليات التدريب
+            </div>
+            <h2 className="text-5xl font-black leading-tight tracking-tight text-white">
+              إدارة أكثر هدوءاً،
+              <span className="block bg-gradient-to-l from-teal-200 via-white to-blue-200 bg-clip-text text-transparent">
+                وقرارات أسرع.
+              </span>
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              نظام كرياتيفا يجمع الحضور، الفلترة، البلاك ليست، الشهادات، وسجلات
+              الإدارة في تجربة واحدة مصممة للفريق التشغيلي بثقة ووضوح.
+            </p>
+          </div>
+        </div>
+
+        <div className="mx-auto w-full max-w-md">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.075] p-6 shadow-[0_30px_100px_rgba(0,0,0,.45)] backdrop-blur-2xl sm:p-8">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl border border-white/10 bg-white/95 p-3 shadow-2xl shadow-black/30">
+                <Image
+                  src="/logo.png"
+                  alt="Creativa Logo"
+                  width={72}
+                  height={72}
+                  priority
+                  sizes="72px"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.35em] text-teal-200/80">
+                Creativa Mansoura
+              </p>
+              <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                مرحباً بك في نظام إدارة كرياتيفا
+              </h1>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                سجّل الدخول للوصول إلى أدوات إدارة الحضور والفلترة والتقارير.
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              {error && (
+                <div
+                  role="alert"
+                  className="flex items-center gap-3 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm font-semibold text-red-100 shadow-lg shadow-red-950/20"
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0 text-red-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="login-identifier"
+                  className="block text-sm font-bold text-slate-100"
+                >
+                  البريد الإلكتروني أو اسم المستخدم
+                </label>
+                <div className="group relative">
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500 transition-colors group-focus-within:text-teal-300">
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 10-8 0 4 4 0 008 0zM12 14c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    id="login-identifier"
+                    name="identifier"
+                    type="text"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-14 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 pr-12 text-sm font-semibold text-white shadow-inner shadow-black/20 outline-none transition-all duration-200 placeholder:text-slate-500 focus:border-teal-300/60 focus:bg-slate-950/65 focus:ring-4 focus:ring-teal-400/10"
+                    placeholder="example@creativa.gov.eg أو username"
+                    autoComplete="username"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="login-password"
+                  className="block text-sm font-bold text-slate-100"
+                >
+                  كلمة المرور
+                </label>
+                <div className="group relative">
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500 transition-colors group-focus-within:text-teal-300">
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    id="login-password"
+                    name="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-14 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 pr-12 text-sm font-semibold text-white shadow-inner shadow-black/20 outline-none transition-all duration-200 placeholder:text-slate-500 focus:border-teal-300/60 focus:bg-slate-950/65 focus:ring-4 focus:ring-teal-400/10"
+                    placeholder="أدخل كلمة المرور"
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="group mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-teal-500 via-emerald-500 to-blue-500 px-4 font-black text-white shadow-[0_18px_45px_rgba(20,184,166,.25)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(20,184,166,.34)] focus:outline-none focus:ring-4 focus:ring-teal-300/20 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-65"
+              >
+                {loading ? (
+                  <>
+                    <svg
+                      className="h-5 w-5 animate-spin text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    جاري تسجيل الدخول...
+                  </>
+                ) : (
+                  <>
+                    دخول النظام
+                    <svg
+                      className="h-5 w-5 transition-transform duration-300 group-hover:-translate-x-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 17l-5-5m0 0l5-5m-5 5h12"
+                      />
+                    </svg>
+                  </>
+                )}
+              </button>
+
+              <p className="pt-2 text-center text-xs leading-6 text-slate-400">
+                هذا النظام مخصص لفريق Creativa Innovation Hub - Mansoura فقط.
+              </p>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
