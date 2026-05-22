@@ -1,68 +1,15 @@
-import { db } from "./firebase";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  Timestamp
-} from "firebase/firestore";
+import { auditAPI, AuditLog } from "./api";
+export type { AuditLog };
 
-export interface AuditLog {
-  id?: string;
-  action: string;
-  performedBy: string;
-  performedByName: string;
-  performedByRole: string;
-  targetId: string;
-  targetName: string;
-  details: string;
-  timestamp: Date;
-}
+// NOTE: The `logAction()` function has been completely removed.
+// Audit logging is now a side-effect handled automatically by the backend controllers.
+// The frontend no longer manually dispatches audit logs.
+// This file is now read-only for fetching audit logs in the admin dashboard.
 
-export async function logAction(params: {
-  action: string;
-  performedBy: string;
-  performedByName: string;
-  performedByRole: string;
-  targetId?: string;
-  targetName?: string;
-  details: string;
-}): Promise<void> {
-  await addDoc(collection(db, "audit_logs"), {
-    action: params.action,
-    performedBy: params.performedBy,
-    performedByName: params.performedByName,
-    performedByRole: params.performedByRole,
-    targetId: params.targetId || "",
-    targetName: params.targetName || "",
-    details: params.details,
-    timestamp: Timestamp.now(),
-  });
-}
-
-export async function getAuditLogs(limitCount: number = 100): Promise<AuditLog[]> {
-  const q = query(
-    collection(db, "audit_logs"),
-    orderBy("timestamp", "desc"),
-    limit(limitCount)
-  );
-  
-  const snapshot = await getDocs(q);
-  
-  return snapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      action: data.action,
-      performedBy: data.performedBy,
-      performedByName: data.performedByName,
-      performedByRole: data.performedByRole,
-      targetId: data.targetId,
-      targetName: data.targetName,
-      details: data.details,
-      timestamp: data.timestamp?.toDate() || new Date(),
-    } as AuditLog;
-  });
+export async function getAuditLogs(params?: Record<string, unknown>): Promise<AuditLog[]> {
+  const res = await auditAPI.list(params);
+  return res.data.data.map(log => ({
+    ...log,
+    id: log._id || log.targetId, // ensure id exists for UI components relying on it
+  }));
 }

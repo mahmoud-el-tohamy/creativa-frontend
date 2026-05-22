@@ -2,10 +2,9 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
-import { getEmailByUsername, getUserProfile } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
+import axios from "axios";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,47 +13,23 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  const { signIn } = useAuth();
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // If the identifier is not an email, resolve it from the stored username.
-      let loginEmail: string;
-      if (email.includes("@")) {
-        loginEmail = email.trim();
-      } else {
-        const found = await getEmailByUsername(email.trim());
-        if (!found) {
-          setError("اسم المستخدم غير موجود في النظام");
-          setLoading(false);
-          return;
-        }
-        loginEmail = found;
-      }
-
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        loginEmail,
-        password,
-      );
-
-      const profile = await getUserProfile(userCredential.user.uid);
-      if (!profile || !profile.isActive) {
-        await signOut(auth);
-        setError("حسابك غير مفعّل، تواصل مع المسؤول");
-        setLoading(false);
-        return;
-      }
-
-      document.cookie =
-        "auth-session=active; path=/; max-age=86400; samesite=strict";
-
+      await signIn(email, password);
       router.replace("/");
     } catch (err) {
       console.error(err);
-      setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data?.message || "تعذّر الاتصال بالخادم");
+      } else {
+        setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      }
       setLoading(false);
     }
   };

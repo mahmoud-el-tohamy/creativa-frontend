@@ -5,13 +5,10 @@ import { readExcel, Person, downloadStyledExcel } from "@/lib/excel";
 import { addManyToBlacklist, getBlacklistIds } from "@/lib/blacklist";
 import { validateNationalId } from "@/lib/validation";
 import RouteGuard from "@/components/RouteGuard";
-import { useAuth } from "@/hooks/useAuth";
-import { logAction } from "@/lib/audit";
 
 type ParsedFileState = { name: string; size: number; data: Person[] };
 
 export default function Home() {
-  const { user } = useAuth();
   const [registeredFile, setRegisteredFile] = useState<ParsedFileState | null>(null);
   const [attendedFile, setAttendedFile] = useState<ParsedFileState | null>(null);
   const [isParsingRegistered, setIsParsingRegistered] = useState(false);
@@ -152,17 +149,6 @@ export default function Home() {
         skippedExisting,
       });
 
-      if (user) {
-        await logAction({
-          action: "attendance_upload",
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-          targetId: "",
-          targetName: "",
-          details: `تم رفع كشف الحضور — ${newAbsentees.length} غائب أضيفوا للبلاك ليست`,
-        });
-      }
 
       showToast("تمت المقارنة والإضافة بنجاح!", "success");
     } catch (error) {

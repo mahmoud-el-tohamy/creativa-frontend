@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { UserRole } from "@/lib/auth";
+import type { UserRole } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface RouteGuardProps {

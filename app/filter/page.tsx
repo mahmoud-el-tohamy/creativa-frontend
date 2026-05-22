@@ -4,11 +4,8 @@ import React, { useState, useRef, useMemo } from "react";
 import { readExcel, downloadExcel, Person } from "@/lib/excel";
 import { getBlacklistIds } from "@/lib/blacklist";
 import RouteGuard from "@/components/RouteGuard";
-import { useAuth } from "@/hooks/useAuth";
-import { logAction } from "@/lib/audit";
 
 export default function FilterPage() {
-  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -70,17 +67,6 @@ export default function FilterPage() {
       setCleanList(clean);
       setBlacklistedList(blacklisted);
 
-      if (user) {
-        await logAction({
-          action: "filter_run",
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-          targetId: "",
-          targetName: "",
-          details: `تم فلترة قائمة — ${blacklisted.length} شخص محذوف من أصل ${allCandidates.length}`,
-        });
-      }
 
       showToast("تم فلترة القائمة بنجاح!", "success");
     } catch (error) {

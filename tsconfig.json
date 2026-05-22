@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "creativa-backend/tsconfig.json"  ],
   "exclude": ["node_modules"]
 }

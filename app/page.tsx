@@ -105,7 +105,7 @@ function buildChartData(
   let baseCumulative = 0;
 
   entries.forEach(entry => {
-    const d = entry.addedAt;
+    const d = new Date(entry.addedAt);
     if (d < startDate) {
       baseCumulative++;
       return;
@@ -318,7 +318,7 @@ export default function Dashboard() {
         let totalLast6Months = 0;
 
         data.forEach((entry) => {
-          const date = entry.addedAt;
+          const date = new Date(entry.addedAt);
 
           // This month count
           if (date.getMonth() === thisMonth && date.getFullYear() === thisYear) {
@@ -358,16 +358,18 @@ export default function Dashboard() {
     return buildChartData(entries, selectedRange);
   }, [entries, selectedRange]);
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("ar-EG", {
+  const formatDate = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("ar-EG", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
   };
 
-  const isExpiringSoon = (date: Date) => {
-    const diffTime = new Date().getTime() - date.getTime();
+  const isExpiringSoon = (date: string | Date) => {
+    const d = new Date(date);
+    const diffTime = new Date().getTime() - d.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 90;
   };
@@ -382,7 +384,7 @@ export default function Dashboard() {
       if (!bucket) return;
 
       filteredEntries = entries.filter((e) => {
-        const d = e.addedAt;
+        const d = new Date(e.addedAt);
         let entryKey = "";
         if (selectedRange === "daily") entryKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
         else if (selectedRange === "weekly") entryKey = `${d.getFullYear()}-W${getWeekNumber(d)}`;
@@ -419,7 +421,7 @@ export default function Dashboard() {
   };
 
   const recentEntries = [...entries]
-    .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
+    .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
     .slice(0, 10);
 
   return (

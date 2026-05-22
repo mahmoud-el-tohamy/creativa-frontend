@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./useAuth";
-import type { UserRole } from "@/lib/auth";
+import type { UserRole } from "@/lib/api";
 
 export function useRequireAuth(allowedRoles?: UserRole[]) {
   const { user, loading } = useAuth();

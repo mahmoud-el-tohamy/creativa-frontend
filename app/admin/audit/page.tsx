@@ -36,19 +36,22 @@ const ACTION_FILTER_OPTIONS = [
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function formatArabicDate(d: Date) {
+function formatArabicDate(dateInput: string | Date) {
+  const d = new Date(dateInput);
   const day = new Intl.DateTimeFormat("ar-EG", { weekday: "long" }).format(d);
   const date = new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "long", year: "numeric" }).format(d);
   const time = new Intl.DateTimeFormat("ar-EG", { hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
   return `${day}، ${date} — ${time}`;
 }
 
-function isToday(d: Date) {
+function isToday(dateInput: string | Date) {
+  const d = new Date(dateInput);
   const now = new Date();
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
-function isLast30Days(d: Date) {
+function isLast30Days(dateInput: string | Date) {
+  const d = new Date(dateInput);
   return Date.now() - d.getTime() < 30 * 24 * 60 * 60 * 1000;
 }
 
@@ -78,7 +81,7 @@ export default function AuditPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    getAuditLogs(1000).then((data) => { setLogs(data); setLoading(false); });
+    getAuditLogs({ limit: 1000 }).then((data) => { setLogs(data); setLoading(false); });
   }, []);
 
   // ─── Stats ──────────────────────────────────────────────────────────────────
@@ -102,12 +105,12 @@ export default function AuditPage() {
       if (filterFrom) {
         const from = new Date(filterFrom);
         from.setHours(0, 0, 0, 0);
-        if (l.timestamp < from) return false;
+        if (new Date(l.timestamp) < from) return false;
       }
       if (filterTo) {
         const to = new Date(filterTo);
         to.setHours(23, 59, 59, 999);
-        if (l.timestamp > to) return false;
+        if (new Date(l.timestamp) > to) return false;
       }
       return true;
     });
@@ -248,7 +251,7 @@ export default function AuditPage() {
                     paginated.map((log) => {
                       const meta = ACTION_META[log.action] ?? { label: log.action, color: "bg-gray-100 text-gray-600" };
                       return (
-                        <tr key={log.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <tr key={log._id} className="border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${meta.color}`}>
                               {meta.label}
