@@ -13,9 +13,11 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.BACKEND_API_URL || 'http://localhost:5000/api'}/:path*`,
+        destination: process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:5000/api/:path*' 
+          : 'https://creativa-backend.vercel.app/api/:path*',
       },
-    ];
+    ]
   },
 };
 
