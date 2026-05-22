@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useReducer, useRef } from "react";
-import { getBlacklist, addToBlacklist, removeFromBlacklist, removeFromBlacklistBulk, cleanupExpired, BlacklistEntry } from "@/lib/blacklist";
+import { getBlacklist, addToBlacklist, removeFromBlacklist, cleanupExpired, BlacklistEntry } from "@/lib/blacklist";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
-import { logAction } from "@/lib/audit";
 import CustomSelect from "@/components/ui/CustomSelect";
 
 // ADDED: Filter Bar Types and Reducer
@@ -326,17 +325,6 @@ export default function BlacklistPage() {
     setIsSubmitting(true);
     try {
       await addToBlacklist({ name: newName.trim(), nationalId: newNationalId.trim() });
-      if (user) {
-        await logAction({
-          action: "blacklist_add",
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-          targetId: newNationalId.trim(),
-          targetName: newName.trim(),
-          details: `تم إضافة ${newName.trim()} للبلاك ليست`,
-        });
-      }
       showToast("تم إضافة الشخص بنجاح.", "success");
       setIsAddModalOpen(false);
       setNewName("");
@@ -353,21 +341,10 @@ export default function BlacklistPage() {
   const handleDeleteConfirm = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    const target = entries.find((e) => e.id === deleteId);
+    setIsDeleting(true);
     try {
       await removeFromBlacklist(deleteId);
       setSelectedIds((prev) => prev.filter((id) => id !== deleteId));
-      if (user && target) {
-        await logAction({
-          action: "blacklist_remove",
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-          targetId: target.nationalId,
-          targetName: target.name,
-          details: `تم حذف ${target.name} من البلاك ليست`,
-        });
-      }
       showToast("تم الحذف بنجاح.", "success");
       setDeleteId(null);
       await loadData();
@@ -385,18 +362,7 @@ export default function BlacklistPage() {
     setIsDeleting(true);
     const count = idsToDelete.length;
     try {
-      await removeFromBlacklistBulk(idsToDelete);
-      if (user) {
-        await logAction({
-          action: "blacklist_bulk_delete",
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-          targetId: "",
-          targetName: "",
-          details: `تم حذف ${count} أشخاص من البلاك ليست بشكل جماعي`,
-        });
-      }
+      await Promise.all(idsToDelete.map(id => removeFromBlacklist(id)));
       showToast(`تم حذف ${count} أشخاص بنجاح.`, "success");
       setSelectedIds([]);
       setIsBulkDeleteModalOpen(false);
@@ -430,28 +396,28 @@ export default function BlacklistPage() {
       fourMonthsAgo.setMonth(now.getMonth() - 4);
 
       if (filters.status === "expiring") {
-        result = result.filter(e => e.addedAt <= threeMonthsAgo && e.addedAt >= fourMonthsAgo);
+        result = result.filter(e => { const d = new Date(e.addedAt); return d <= threeMonthsAgo && d >= fourMonthsAgo; });
       } else if (filters.status === "active") {
-        result = result.filter(e => e.addedAt > threeMonthsAgo);
+        result = result.filter(e => new Date(e.addedAt) > threeMonthsAgo);
       }
     }
 
     if (filters.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
       fromDate.setHours(0, 0, 0, 0);
-      result = result.filter(e => e.addedAt >= fromDate);
+      result = result.filter(e => new Date(e.addedAt) >= fromDate);
     }
     if (filters.dateTo) {
       const toDate = new Date(filters.dateTo);
       toDate.setHours(23, 59, 59, 999);
-      result = result.filter(e => e.addedAt <= toDate);
+      result = result.filter(e => new Date(e.addedAt) <= toDate);
     }
 
     result.sort((a, b) => {
       if (filters.sort === "newest") {
-        return b.addedAt.getTime() - a.addedAt.getTime();
+        return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
       } else if (filters.sort === "oldest") {
-        return a.addedAt.getTime() - b.addedAt.getTime();
+        return new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
       } else if (filters.sort === "name_asc") {
         return a.name.localeCompare(b.name, 'ar');
       }
@@ -497,11 +463,12 @@ export default function BlacklistPage() {
     );
   };
 
-  const formatDate = (date: Date) => {
-    // dd/mm/yyyy format
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
+  const formatDate = (date: string | Date | undefined) => {
+    if (!date) return "—";
+    const d = typeof date === "string" ? new Date(date) : date;
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
 

@@ -3,7 +3,6 @@
 import { useState, useReducer, useRef } from "react";
 import dynamic from "next/dynamic";
 import RouteGuard from "@/components/RouteGuard";
-import { useAuth } from "@/hooks/useAuth";
 
 const WorkshopBreakdownTable = dynamic(
   () => import("@/components/organize/WorkshopBreakdownTable"),
@@ -220,7 +219,6 @@ export default function OrganizePage() {
     error: null,
   });
 
-  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -317,22 +315,10 @@ export default function OrganizePage() {
     dispatch({ type: "START_EXPORT" });
 
     try {
-      const [{ organizeAndDownload }, { logAction }] = await Promise.all([
-        import("@/lib/excel"),
-        import("@/lib/audit"),
-      ]);
+      const { organizeAndDownload } = await import("@/lib/excel");
 
       organizeAndDownload(state.rows, state.headers, state.file.name);
 
-      if (user) {
-        await logAction({
-          action: "sheet_organize",
-          details: `تم تنظيم شيت حضور — ${state.rows.length} سجل موزعة على ${state.workshopGroups.size} Workshop`,
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-        });
-      }
 
       dispatch({ type: "EXPORT_DONE" });
       showToast("تم تنزيل الشيت المنظم بنجاح", "success");

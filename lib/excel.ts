@@ -45,6 +45,11 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function toEnglishDigits(str: string) {
+  const arabicNumbers = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  return str.replace(/[٠-٩]/g, (w) => arabicNumbers.indexOf(w).toString());
+}
+
 // قراءة شيت Excel وإرجاع array
 export async function readExcel(file: File): Promise<Person[]> {
   try {
@@ -59,7 +64,7 @@ export async function readExcel(file: File): Promise<Person[]> {
       .slice(1)
       .map((row) => ({
         name: String(row[0] || "").trim(),
-        nationalId: String(row[1] || "").trim(),
+        nationalId: toEnglishDigits(String(row[1] || "")).replace(/\s+/g, ""),
         phone: row[2] ? String(row[2]) : undefined,
         email: row[3] ? String(row[3]) : undefined,
       }))
@@ -117,7 +122,7 @@ export async function readMultiDayAttendanceExcel(
 
     const people = rows
       .map((row) => {
-        const nid = String(row[nationalIdKey] ?? "").trim();
+        const nid = toEnglishDigits(String(row[nationalIdKey] ?? "")).replace(/\s+/g, "");
         const validation = validateNationalId(nid);
         
         return {

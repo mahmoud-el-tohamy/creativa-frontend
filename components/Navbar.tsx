@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { UserRole } from "@/lib/auth";
+import { UserRole } from "@/lib/api";
 
 type NavLink = {
   href: string;

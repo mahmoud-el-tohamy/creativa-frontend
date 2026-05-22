@@ -2,8 +2,6 @@
 
 import { useRef, useState } from "react";
 import RouteGuard from "@/components/RouteGuard";
-import { useAuth } from "@/hooks/useAuth";
-import { logAction } from "@/lib/audit";
 import { addManyToBlacklist, getBlacklistIds } from "@/lib/blacklist";
 import {
   downloadStyledExcel,
@@ -33,7 +31,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function MultiDayAttendance() {
-  const { user } = useAuth();
   const [totalTrainingDays, setTotalTrainingDays] = useState("5");
   const [minimumAttendanceDays, setMinimumAttendanceDays] = useState("3");
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number } | null>(null);
@@ -192,17 +189,6 @@ export default function MultiDayAttendance() {
 
       setResult(processingResult);
 
-      if (user) {
-        await logAction({
-          action: "attendance_upload",
-          performedBy: user.uid,
-          performedByName: user.displayName,
-          performedByRole: user.role,
-          targetId: "",
-          targetName: "",
-          details: `تمت معالجة حضور متعدد الأيام — ناجح ${passedList.length}، راسب ${failedList.length}، مضاف للبلاك ليست ${newBlacklistEntries.length}`,
-        });
-      }
 
       showToast(
         `تمت المعالجة: نجاح ${passedList.length}، وتمت إضافة ${newBlacklistEntries.length} للبلاك ليست`,

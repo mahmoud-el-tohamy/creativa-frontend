@@ -1,17 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
-import { getAllUsers, updateUserRole, toggleUserActive, AppUser, UserRole } from "@/lib/auth";
-import { logAction } from "@/lib/audit";
+import { usersAPI, AppUser } from "@/lib/api";
 import CustomSelect from "@/components/ui/CustomSelect";
 import ToggleSwitch from "@/components/ui/ToggleSwitch";
 
+type UserRole = "admin" | "employee" | "viewer";
+
 const ROLE_LABELS: Record<UserRole, string> = { admin: "مدير", employee: "موظف", viewer: "مشاهد" };
 
-function formatDate(d: Date) {
-  return new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "short", day: "numeric" }).format(d);
+function formatDate(d: string | Date | undefined) {
+  if (!d) return "—";
+  const dateObj = typeof d === "string" ? new Date(d) : d;
+  return new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "short", day: "numeric" }).format(dateObj);
 }
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
@@ -31,15 +35,13 @@ function SkeletonRow() {
 interface AddUserModalProps {
   onClose: () => void;
   onCreated: (user: AppUser) => void;
-  currentUser: AppUser;
 }
 
-function AddUserModal({ onClose, onCreated, currentUser }: AddUserModalProps) {
+function AddUserModal({ onClose, onCreated }: AddUserModalProps) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"employee" | "viewer">("employee");
+  const [role, setRole] = useState<UserRole>("employee");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,31 +53,25 @@ function AddUserModal({ onClose, onCreated, currentUser }: AddUserModalProps) {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/create-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password, displayName, role, createdBy: currentUser.uid }),
+      const res = await usersAPI.create({
+        email,
+        password,
+        displayName,
+        role,
       });
 
-      const data = await res.json();
-      if (!data.success) { setError(data.error || "حدث خطأ ما"); setSubmitting(false); return; }
-
-      await logAction({
-        action: "user_create",
-        performedBy: currentUser.uid,
-        performedByName: currentUser.displayName,
-        performedByRole: currentUser.role,
-        targetId: data.uid,
-        targetName: displayName,
-        details: `تم إنشاء حساب ${displayName} بدور ${ROLE_LABELS[role]}`,
-      });
-
-      onCreated({
-        uid: data.uid, email, username, displayName, role, isActive: true,
-        createdAt: new Date(), createdBy: currentUser.uid,
-      });
-    } catch {
-      setError("تعذّر الاتصال بالخادم");
+      if (res.data.success) {
+        onCreated(res.data.data);
+      } else {
+        setError("حدث خطأ ما");
+        setSubmitting(false);
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || "تعذّر الاتصال بالخادم");
+      } else {
+        setError("حدث خطأ غير متوقع");
+      }
       setSubmitting(false);
     }
   };
@@ -85,7 +81,6 @@ function AddUserModal({ onClose, onCreated, currentUser }: AddUserModalProps) {
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         <div className="bg-blue-600 px-6 py-5 text-white">
           <h2 className="text-xl font-bold">إضافة مستخدم جديد</h2>
-          <p className="text-blue-100 text-sm mt-1">لا يمكن إنشاء حساب مدير من هنا — استخدم Firebase Console</p>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
@@ -94,7 +89,6 @@ function AddUserModal({ onClose, onCreated, currentUser }: AddUserModalProps) {
           {[
             { key: "displayName", label: "الاسم الكامل", value: displayName, set: setDisplayName, type: "text", placeholder: "مثال: أحمد محمد" },
             { key: "email", label: "البريد الإلكتروني", value: email, set: setEmail, type: "email", placeholder: "example@email.com" },
-            { key: "username", label: "اسم المستخدم", value: username, set: setUsername, type: "text", placeholder: "username" },
             { key: "password", label: "كلمة المرور", value: password, set: setPassword, type: "password", placeholder: "8 أحرف على الأقل" },
           ].map(({ key, label, value, set, type, placeholder }) => (
             <div key={label}>
@@ -113,8 +107,9 @@ function AddUserModal({ onClose, onCreated, currentUser }: AddUserModalProps) {
             <CustomSelect
               id="add-user-role"
               value={role}
-              onChange={(v) => setRole(v as "employee" | "viewer")}
+              onChange={(v) => setRole(v as UserRole)}
               options={[
+                { value: "admin", label: "مدير" },
                 { value: "employee", label: "موظف" },
                 { value: "viewer",   label: "مشاهد" },
               ]}
@@ -181,15 +176,22 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    getAllUsers().then((data) => { setUsers(data); setLoading(false); });
+    usersAPI.list()
+      .then((res) => {
+        setUsers(res.data.data);
+        setLoading(false);
+      })
+      .catch(() => {
+        showToast("فشل تحميل المستخدمين", "error");
+        setLoading(false);
+      });
   }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return users.filter((u) =>
-      u.displayName.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.username?.toLowerCase().includes(q)
+      u.displayName?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q)
     );
   }, [users, search]);
 
@@ -199,47 +201,37 @@ export default function UsersPage() {
     inactive: users.filter((u) => !u.isActive).length,
   }), [users]);
 
-  const handleRoleChange = (uid: string, newRole: UserRole, name: string) => {
+  const handleRoleChange = (id: string, newRole: UserRole, name: string) => {
     setConfirmDialog({
       message: `هل تريد تغيير دور ${name} إلى "${ROLE_LABELS[newRole]}"؟`,
       onConfirm: async () => {
         setConfirmDialog(null);
-        await updateUserRole(uid, newRole);
-        setUsers((prev) => prev.map((u) => u.uid === uid ? { ...u, role: newRole } : u));
-        await logAction({
-          action: "user_role_change",
-          performedBy: currentUser!.uid,
-          performedByName: currentUser!.displayName,
-          performedByRole: currentUser!.role,
-          targetId: uid,
-          targetName: name,
-          details: `تم تغيير الدور إلى ${ROLE_LABELS[newRole]}`,
-        });
-        showToast(`تم تحديث دور ${name}`);
+        try {
+          await usersAPI.changeRole(id, newRole);
+          setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role: newRole } : u));
+          showToast(`تم تحديث دور ${name}`);
+        } catch {
+          showToast("حدث خطأ أثناء تحديث الدور", "error");
+        }
       },
     });
   };
 
-  const handleToggleActive = (uid: string, currentActive: boolean, name: string) => {
-    if (uid === currentUser?.uid) { showToast("لا يمكنك تعطيل حسابك الخاص", "error"); return; }
+  const handleToggleActive = (id: string, currentActive: boolean, name: string) => {
+    if (id === currentUser?.id) { showToast("لا يمكنك تعطيل حسابك الخاص", "error"); return; }
     const action = currentActive ? "تعطيل" : "تفعيل";
     setConfirmDialog({
       message: `هل تريد ${action} حساب "${name}"؟`,
       danger: currentActive,
       onConfirm: async () => {
         setConfirmDialog(null);
-        await toggleUserActive(uid, !currentActive);
-        setUsers((prev) => prev.map((u) => u.uid === uid ? { ...u, isActive: !currentActive } : u));
-        await logAction({
-          action: currentActive ? "user_deactivate" : "user_activate",
-          performedBy: currentUser!.uid,
-          performedByName: currentUser!.displayName,
-          performedByRole: currentUser!.role,
-          targetId: uid,
-          targetName: name,
-          details: `تم ${action} الحساب`,
-        });
-        showToast(`تم ${action} حساب ${name}`);
+        try {
+          await usersAPI.toggleActive(id, !currentActive);
+          setUsers((prev) => prev.map((u) => u.id === id ? { ...u, isActive: !currentActive } : u));
+          showToast(`تم ${action} حساب ${name}`);
+        } catch {
+          showToast(`حدث خطأ أثناء ${action} الحساب`, "error");
+        }
       },
     });
   };
@@ -272,7 +264,7 @@ export default function UsersPage() {
 
         {/* Add User Modal */}
         {showAddModal && currentUser && (
-          <AddUserModal currentUser={currentUser} onClose={() => setShowAddModal(false)} onCreated={handleUserCreated} />
+          <AddUserModal onClose={() => setShowAddModal(false)} onCreated={handleUserCreated} />
         )}
 
         <div className="max-w-6xl mx-auto space-y-8">
@@ -314,7 +306,7 @@ export default function UsersPage() {
               id="users-search"
               name="usersSearch"
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث بالاسم أو البريد الإلكتروني أو اسم المستخدم..."
+              placeholder="ابحث بالاسم أو البريد الإلكتروني..."
               className="w-full pr-12 pl-5 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
@@ -339,7 +331,7 @@ export default function UsersPage() {
                     </tr>
                   ) : (
                     filtered.map((u) => (
-                      <tr key={u.uid} className="border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={u.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         {/* Name */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
@@ -348,7 +340,6 @@ export default function UsersPage() {
                             </div>
                             <div>
                               <p className="font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">{u.displayName}</p>
-                              <p className="text-xs text-gray-400">@{u.username}</p>
                             </div>
                           </div>
                         </td>
@@ -358,10 +349,10 @@ export default function UsersPage() {
                         <td className="px-5 py-4">
                           <CustomSelect
                             asBadge
-                            id={`user-role-${u.uid}`}
+                            id={`user-role-${u.id}`}
                             ariaLabel={`تغيير دور المستخدم ${u.displayName}`}
                             value={u.role}
-                            onChange={(v) => handleRoleChange(u.uid, v as UserRole, u.displayName)}
+                            onChange={(v) => handleRoleChange(u.id, v as UserRole, u.displayName)}
                             options={[
                               { value: "admin",    label: "مدير",   color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
                               { value: "employee", label: "موظف",   color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -382,9 +373,9 @@ export default function UsersPage() {
                         <td className="px-5 py-4">
                           <ToggleSwitch
                             checked={u.isActive}
-                            onChange={() => handleToggleActive(u.uid, u.isActive, u.displayName)}
-                            disabled={u.uid === currentUser?.uid}
-                            title={u.uid === currentUser?.uid ? "لا يمكنك تعطيل حسابك" : u.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
+                            onChange={() => handleToggleActive(u.id, u.isActive, u.displayName)}
+                            disabled={u.id === currentUser?.id}
+                            title={u.id === currentUser?.id ? "لا يمكنك تعطيل حسابك" : u.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
                           />
                         </td>
                       </tr>
@@ -399,3 +390,4 @@ export default function UsersPage() {
     </RouteGuard>
   );
 }
+
