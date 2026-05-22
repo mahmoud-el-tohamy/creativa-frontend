@@ -155,7 +155,7 @@ api.interceptors.response.use(
         );
         return api(originalRequest);
       } catch (refreshError) {
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
         return Promise.reject(refreshError);
