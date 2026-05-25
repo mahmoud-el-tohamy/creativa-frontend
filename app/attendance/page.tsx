@@ -26,6 +26,7 @@ export default function Home() {
     invalidEntries?: { name: string; nationalId: string; reason: string }[];
     attendedPeople: Person[];
     skippedExisting: Person[];
+    unregisteredAttendees: Person[];
   } | null>(null);
 
   const showToast = (message: string, type: "success" | "error") => {
@@ -103,8 +104,11 @@ export default function Home() {
       }
 
       // 2. المقارنة لاستخراج الغائبين
+      const registeredIds = new Set(registeredPeople.map((p) => p.nationalId));
       const attendedIds = new Set(attendedPeople.map((p) => p.nationalId));
+      
       const absentees = registeredPeople.filter((p) => !attendedIds.has(p.nationalId));
+      const unregisteredAttendees = attendedPeople.filter((p) => !registeredIds.has(p.nationalId));
 
       // 3. التحقق من البلاك ليست لتجنب التكرار
       const existingBlacklistIds = await getBlacklistIds();
@@ -147,6 +151,7 @@ export default function Home() {
         invalidEntries,
         attendedPeople,
         skippedExisting,
+        unregisteredAttendees,
       });
 
 
@@ -300,10 +305,11 @@ export default function Home() {
           <div className="mt-12 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-8">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 border-b pb-4">ملخص العملية</h2>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard title="إجمالي المسجلين" value={result.registeredCount} color="text-blue-600" bgColor="bg-blue-50" />
               <StatCard title="إجمالي الحضور" value={result.attendedCount} color="text-green-600" bgColor="bg-green-50" />
               <StatCard title="المنضمين للبلاك ليست" value={result.addedCount} color="text-red-600" bgColor="bg-red-50" subtitle="(متغيبين جدد)" />
+              <StatCard title="حاضرون غير مسجلين" value={result.unregisteredAttendees.length} color="text-amber-600" bgColor="bg-amber-50" subtitle="(حضروا بدون تسجيل)" />
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 mb-6">
@@ -329,34 +335,66 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-                المتغيبون الجدد ({result.absentees.length})
-              </h3>
-              {result.absentees.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <table className="w-full text-sm text-right text-gray-600">
-                    <thead className="bg-transparent dark:bg-transparent text-gray-700 dark:text-gray-300 font-semibold border-b">
-                      <tr>
-                        <th className="px-6 py-4">الاسم</th>
-                        <th className="px-6 py-4">الرقم القومي</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.absentees.map((person, idx) => (
-                        <tr key={idx} className="border-b last:border-0 hover:bg-transparent dark:bg-transparent transition-colors">
-                          <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">{person.name}</td>
-                          <td className="px-6 py-3">{person.nationalId}</td>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                  المتغيبون الجدد ({result.absentees.length})
+                </h3>
+                {result.absentees.length > 0 ? (
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-h-96">
+                    <table className="w-full text-sm text-right text-gray-600">
+                      <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold border-b sticky top-0 z-10">
+                        <tr>
+                          <th className="px-6 py-4">الاسم</th>
+                          <th className="px-6 py-4">الرقم القومي</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="p-6 bg-transparent dark:bg-transparent text-center rounded-lg text-gray-500 dark:text-gray-400">
-                  لا يوجد متغيبين جدد لإضافتهم للبلاك ليست.
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {result.absentees.map((person, idx) => (
+                          <tr key={idx} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">{person.name}</td>
+                            <td className="px-6 py-3">{person.nationalId}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-6 bg-gray-50 dark:bg-gray-800/50 text-center rounded-lg text-gray-500 dark:text-gray-400">
+                    لا يوجد متغيبين جدد لإضافتهم للبلاك ليست.
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                  حاضرون غير مسجلين ({result.unregisteredAttendees.length})
+                </h3>
+                {result.unregisteredAttendees.length > 0 ? (
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-h-96">
+                    <table className="w-full text-sm text-right text-gray-600">
+                      <thead className="bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 font-semibold border-b border-amber-100 dark:border-amber-800 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-6 py-4">الاسم</th>
+                          <th className="px-6 py-4">الرقم القومي</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.unregisteredAttendees.map((person, idx) => (
+                          <tr key={idx} className="border-b last:border-0 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors">
+                            <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">{person.name}</td>
+                            <td className="px-6 py-3">{person.nationalId}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-6 bg-gray-50 dark:bg-gray-800/50 text-center rounded-lg text-gray-500 dark:text-gray-400">
+                    جميع الحاضرين موجودون في قائمة التسجيل.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Invalid Entries Warning Card */}

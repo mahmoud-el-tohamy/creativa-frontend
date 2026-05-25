@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useReducer, useRef } from "react";
 import { getBlacklist, addToBlacklist, removeFromBlacklist, cleanupExpired, BlacklistEntry } from "@/lib/blacklist";
+import useSWR from "swr";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -242,8 +243,20 @@ const FilterBar = ({
 export default function BlacklistPage() {
   const { user } = useAuth();
   const canWrite = user?.role === "admin" || user?.role === "employee";
-  const [entries, setEntries] = useState<BlacklistEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const fetcher = async () => {
+    await cleanupExpired();
+    return await getBlacklist();
+  };
+
+  const { data: entriesData, error: swrError, mutate, isLoading: loading } = useSWR("/api/blacklist", fetcher, { 
+    revalidateOnFocus: true,
+    onError: () => {
+      showToast("حدث خطأ أثناء تحميل البيانات.", "error");
+    }
+  });
+  const entries: BlacklistEntry[] = useMemo(() => entriesData || [], [entriesData]);
+
   const [filters, dispatchFilters] = useReducer(filterReducer, initialFilters);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -265,35 +278,6 @@ export default function BlacklistPage() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
   };
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      await cleanupExpired();
-      const data = await getBlacklist();
-      setEntries(data);
-    } catch (error) {
-      console.error(error);
-      showToast("حدث خطأ أثناء تحميل البيانات.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        await cleanupExpired();
-        const data = await getBlacklist();
-        setEntries(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    initData();
-  }, []);
 
   const [prevFilters, setPrevFilters] = useState(filters);
 
@@ -329,7 +313,7 @@ export default function BlacklistPage() {
       setIsAddModalOpen(false);
       setNewName("");
       setNewNationalId("");
-      await loadData();
+      await mutate();
     } catch (error) {
       console.error(error);
       showToast("حدث خطأ أثناء الإضافة.", "error");
@@ -341,13 +325,12 @@ export default function BlacklistPage() {
   const handleDeleteConfirm = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
-    setIsDeleting(true);
     try {
       await removeFromBlacklist(deleteId);
       setSelectedIds((prev) => prev.filter((id) => id !== deleteId));
       showToast("تم الحذف بنجاح.", "success");
       setDeleteId(null);
-      await loadData();
+      await mutate();
     } catch (error) {
       console.error(error);
       showToast("حدث خطأ أثناء الحذف.", "error");
@@ -366,7 +349,7 @@ export default function BlacklistPage() {
       showToast(`تم حذف ${count} أشخاص بنجاح.`, "success");
       setSelectedIds([]);
       setIsBulkDeleteModalOpen(false);
-      await loadData();
+      await mutate();
     } catch (error) {
       console.error(error);
       showToast("حدث خطأ أثناء الحذف المتعدد.", "error");

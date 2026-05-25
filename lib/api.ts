@@ -204,11 +204,19 @@ export const usersAPI = {
     }
     return res;
   },
-  create: (data: CreateUserData) => api.post<{ success: boolean; data: AppUser }>("/users", data),
+  create: async (data: CreateUserData) => {
+    const res = await api.post<{ success: boolean; data: AppUser }>("/users", data);
+    if (res.data && res.data.data) {
+      res.data.data.id = res.data.data.id || (res.data.data as unknown as { _id: string })._id;
+    }
+    return res;
+  },
   changeRole: (id: string, role: string) =>
     api.patch<{ success: boolean; data: AppUser }>(`/users/${id}/role`, { role }),
   toggleActive: (id: string, isActive: boolean) =>
     api.patch<{ success: boolean; data: AppUser }>(`/users/${id}/active`, { isActive }), // Note: parameter isActive ignored by backend toggle, but kept for signature matching
+  deleteUser: (id: string) =>
+    api.delete<{ success: boolean; message: string }>(`/users/${id}/hard`),
 };
 
 export const auditAPI = {
