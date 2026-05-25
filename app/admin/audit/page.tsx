@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import useSWR from "swr";
 import RouteGuard from "@/components/RouteGuard";
 import { getAuditLogs, AuditLog } from "@/lib/audit";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -13,6 +14,7 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   blacklist_add:        { label: "إضافة بلاك ليست",     color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
   blacklist_remove:     { label: "حذف من بلاك ليست",    color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
   blacklist_bulk_delete:{ label: "حذف جماعي",            color: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
+  blacklist_bulk_cleanup:{ label: "تنظيف البلاك ليست",    color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
   attendance_upload:    { label: "رفع الحضور",           color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
   filter_run:           { label: "فلترة قائمة",          color: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
   sheet_organize:       { label: "تنظيم شيت",            color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
@@ -20,19 +22,25 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   user_create:          { label: "إنشاء مستخدم",         color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
   user_deactivate:      { label: "تعطيل مستخدم",        color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
   user_activate:        { label: "تفعيل مستخدم",        color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+  user_delete:          { label: "حذف مستخدم نهائي",     color: "bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-200" },
   user_role_change:     { label: "تغيير الدور",          color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
+  login:                { label: "تسجيل دخول",          color: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400" },
+  logout:               { label: "تسجيل خروج",          color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
 };
 
 const ACTION_FILTER_OPTIONS = [
   { value: "", label: "كل الإجراءات" },
   { value: "blacklist_add", label: "إضافة بلاك ليست" },
   { value: "blacklist_remove", label: "حذف من بلاك ليست" },
+  { value: "blacklist_bulk_cleanup", label: "تنظيف البلاك ليست" },
   { value: "attendance_upload", label: "رفع الحضور" },
   { value: "filter_run", label: "فلترة قائمة" },
   { value: "sheet_organize", label: "تنظيم شيت" },
   { value: "certificate_generate", label: "توليد شهادات" },
   { value: "user_create", label: "إنشاء مستخدم" },
   { value: "user_deactivate", label: "تعطيل مستخدم" },
+  { value: "user_delete", label: "حذف مستخدم نهائي" },
+  { value: "login", label: "تسجيل دخول" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -70,8 +78,11 @@ function SkeletonRow() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AuditPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fetcher = async () => {
+    return await getAuditLogs({ limit: 1000 });
+  };
+  const { data: logsData, isLoading: loading } = useSWR("/api/audit", fetcher, { revalidateOnFocus: true });
+  const logs: AuditLog[] = useMemo(() => logsData || [], [logsData]);
 
   // Filters
   const [filterAction, setFilterAction] = useState("");
@@ -79,10 +90,6 @@ export default function AuditPage() {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [page, setPage] = useState(1);
-
-  useEffect(() => {
-    getAuditLogs({ limit: 1000 }).then((data) => { setLogs(data); setLoading(false); });
-  }, []);
 
   // ─── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {

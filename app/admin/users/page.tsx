@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import useSWR from "swr";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { usersAPI, AppUser } from "@/lib/api";
@@ -163,8 +164,20 @@ function ConfirmDialog({ message, onConfirm, onCancel, danger }: ConfirmDialogPr
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<AppUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fetcher = async () => {
+    const res = await usersAPI.list();
+    return res.data.data;
+  };
+
+  const { data: usersData, error: swrError, mutate, isLoading: loading } = useSWR("/api/users", fetcher, {
+    revalidateOnFocus: true,
+    onError: () => {
+      showToast("فشل تحميل المستخدمين", "error");
+    }
+  });
+
+  const users = useMemo(() => usersData || [], [usersData]);
+
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -174,18 +187,6 @@ export default function UsersPage() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
-
-  useEffect(() => {
-    usersAPI.list()
-      .then((res) => {
-        setUsers(res.data.data);
-        setLoading(false);
-      })
-      .catch(() => {
-        showToast("فشل تحميل المستخدمين", "error");
-        setLoading(false);
-      });
-  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -208,7 +209,7 @@ export default function UsersPage() {
         setConfirmDialog(null);
         try {
           await usersAPI.changeRole(id, newRole);
-          setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role: newRole } : u));
+          mutate((prev: AppUser[] | undefined) => (prev || []).map((u) => u.id === id ? { ...u, role: newRole } : u), false);
           showToast(`تم تحديث دور ${name}`);
         } catch {
           showToast("حدث خطأ أثناء تحديث الدور", "error");
@@ -227,8 +228,8 @@ export default function UsersPage() {
         setConfirmDialog(null);
         try {
           await usersAPI.toggleActive(id, !currentActive);
-          setUsers((prev) => prev.map((u) => u.id === id ? { ...u, isActive: !currentActive } : u));
-          showToast(`تم ${action} حساب ${name}`);
+          mutate((prev: AppUser[] | undefined) => (prev || []).map((u) => u.id === id ? { ...u, isActive: !currentActive } : u), false);
+          showToast(`تم ${action} حساب ${name} بنجاح`);
         } catch {
           showToast(`حدث خطأ أثناء ${action} الحساب`, "error");
         }
@@ -245,7 +246,7 @@ export default function UsersPage() {
         setConfirmDialog(null);
         try {
           await usersAPI.deleteUser(id);
-          setUsers((prev) => prev.filter((u) => u.id !== id));
+          mutate((prev: AppUser[] | undefined) => (prev || []).filter((u) => u.id !== id), false);
           showToast(`تم حذف حساب ${name} بنجاح`);
         } catch {
           showToast(`حدث خطأ أثناء حذف الحساب`, "error");
@@ -255,7 +256,7 @@ export default function UsersPage() {
   };
 
   const handleUserCreated = (newUser: AppUser) => {
-    setUsers((prev) => [newUser, ...prev]);
+    mutate((prev: AppUser[] | undefined) => [newUser, ...(prev || [])], false);
     setShowAddModal(false);
     showToast(`تم إنشاء حساب ${newUser.displayName} بنجاح`);
   };
