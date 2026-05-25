@@ -236,6 +236,24 @@ export default function UsersPage() {
     });
   };
 
+  const handleDeleteUser = (id: string, name: string) => {
+    if (id === currentUser?.id) { showToast("لا يمكنك حذف حسابك الخاص", "error"); return; }
+    setConfirmDialog({
+      message: `تحذير: هل أنت متأكد من حذف حساب "${name}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء!`,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await usersAPI.deleteUser(id);
+          setUsers((prev) => prev.filter((u) => u.id !== id));
+          showToast(`تم حذف حساب ${name} بنجاح`);
+        } catch {
+          showToast(`حدث خطأ أثناء حذف الحساب`, "error");
+        }
+      },
+    });
+  };
+
   const handleUserCreated = (newUser: AppUser) => {
     setUsers((prev) => [newUser, ...prev]);
     setShowAddModal(false);
@@ -369,14 +387,26 @@ export default function UsersPage() {
                         </td>
                         {/* Date */}
                         <td className="px-5 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDate(u.createdAt)}</td>
-                        {/* Actions — toggle switch */}
+                        {/* Actions — toggle switch & delete button */}
                         <td className="px-5 py-4">
-                          <ToggleSwitch
-                            checked={u.isActive}
-                            onChange={() => handleToggleActive(u.id, u.isActive, u.displayName)}
-                            disabled={u.id === currentUser?.id}
-                            title={u.id === currentUser?.id ? "لا يمكنك تعطيل حسابك" : u.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
-                          />
+                          <div className="flex items-center gap-3">
+                            <ToggleSwitch
+                              checked={u.isActive}
+                              onChange={() => handleToggleActive(u.id, u.isActive, u.displayName)}
+                              disabled={u.id === currentUser?.id}
+                              title={u.id === currentUser?.id ? "لا يمكنك تعطيل حسابك" : u.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
+                            />
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.displayName)}
+                              disabled={u.id === currentUser?.id || u.role === "admin"}
+                              className={`p-1.5 rounded-lg transition-colors ${(u.id === currentUser?.id || u.role === "admin") ? "text-gray-300 dark:text-gray-600 cursor-not-allowed" : "text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"}`}
+                              title={u.id === currentUser?.id ? "لا يمكنك حذف حسابك" : u.role === "admin" ? "لا يمكنك حذف مدير آخر" : "حذف الحساب نهائياً"}
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

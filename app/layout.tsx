@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
+import NextTopLoader from 'nextjs-toploader';
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
@@ -33,6 +34,17 @@ export default function RootLayout({
       <body
         className={`${ibmPlexArabic.className} min-h-screen flex flex-col bg-[#F8F8F7] dark:bg-gray-900 transition-colors duration-200 antialiased`}
       >
+        <NextTopLoader 
+          color="#3b82f6" 
+          initialPosition={0.08} 
+          crawlSpeed={200} 
+          height={3} 
+          crawl={true} 
+          showSpinner={false} 
+          easing="ease" 
+          speed={200} 
+          shadow="0 0 10px #3b82f6,0 0 5px #3b82f6" 
+        />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             <Navbar />
