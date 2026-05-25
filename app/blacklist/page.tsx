@@ -256,6 +256,8 @@ export default function BlacklistPage() {
     }
   });
   const entries: BlacklistEntry[] = useMemo(() => entriesData || [], [entriesData]);
+  
+  const [activeTab, setActiveTab] = useState<"blacklisted" | "warnings">("blacklisted");
 
   const [filters, dispatchFilters] = useReducer(filterReducer, initialFilters);
   const [currentPage, setCurrentPage] = useState(1);
@@ -360,13 +362,16 @@ export default function BlacklistPage() {
 
   // ADDED: Advanced Filter Logic
   const filteredEntries = useMemo(() => {
-    let result = [...entries];
+    let result = entries.filter(e => {
+      if (activeTab === "blacklisted" && e.status !== "blacklisted") return false;
+      if (activeTab === "warnings" && e.status !== "warning") return false;
+      return true;
+    });
 
     if (filters.search) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(e => 
-        e.name.toLowerCase().includes(q) || 
-        e.nationalId.includes(q)
+      const s = filters.search.toLowerCase();
+      result = result.filter(
+        (e) => e.name.toLowerCase().includes(s) || e.nationalId.includes(s)
       );
     }
 
@@ -408,7 +413,7 @@ export default function BlacklistPage() {
     });
 
     return result;
-  }, [entries, filters]);
+  }, [entries, filters, activeTab]);
 
   // Paginate entries
   const paginatedEntries = useMemo(() => {
@@ -469,10 +474,10 @@ export default function BlacklistPage() {
         <header className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-6">
           <div>
             <h1 className="text-3xl font-extrabold text-gray-800 dark:text-gray-200">
-              إدارة البلاك ليست
+              إدارة البلاك ليست والإنذارات
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-2">
-              لوحة تحكم لإدارة المستبعدين مع خاصية الحذف التلقائي بعد 4 شهور
+              لوحة تحكم لإدارة المستبعدين والإنذارات
             </p>
           </div>
           {canWrite && (
@@ -487,6 +492,29 @@ export default function BlacklistPage() {
             </button>
           )}
         </header>
+
+        <div className="flex gap-4 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab("blacklisted")}
+            className={`px-6 py-3 font-bold text-lg transition-colors border-b-2 ${
+              activeTab === "blacklisted" 
+                ? "border-red-500 text-red-600 dark:text-red-400" 
+                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
+          >
+            البلاك ليست (المستبعدون)
+          </button>
+          <button
+            onClick={() => setActiveTab("warnings")}
+            className={`px-6 py-3 font-bold text-lg transition-colors border-b-2 ${
+              activeTab === "warnings" 
+                ? "border-amber-500 text-amber-600 dark:text-amber-400" 
+                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
+          >
+            الإنذارات (المعرضون للاستبعاد)
+          </button>
+        </div>
 
         <FilterBar 
           filters={filters} 
@@ -532,7 +560,17 @@ export default function BlacklistPage() {
                     )}
                     <th className="px-6 py-5">الاسم</th>
                     <th className="px-6 py-5">الرقم القومي</th>
-                    <th className="px-6 py-5">تاريخ الإضافة</th>
+                    {activeTab === "warnings" ? (
+                      <>
+                        <th className="px-6 py-5 text-center">الغيابات (تراكات)</th>
+                        <th className="px-6 py-5 text-center">عدد مرات الحضور للتعويض</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-6 py-5">تاريخ الإضافة</th>
+                        <th className="px-6 py-5 text-center">التراكات المتغيب عنها</th>
+                      </>
+                    )}
                     {canWrite && <th className="px-6 py-5 text-center">إجراء</th>}
                   </tr>
                 </thead>
@@ -559,11 +597,36 @@ export default function BlacklistPage() {
                       )}
                       <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{person.name}</td>
                       <td className="px-6 py-4 font-mono text-gray-700 dark:text-gray-300">{person.nationalId}</td>
-                      <td className="px-6 py-4">
-                        <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-xs font-medium tracking-wide">
-                          {formatDate(person.addedAt)}
-                        </span>
-                      </td>
+                      {activeTab === "warnings" ? (
+                        <>
+                          <td className="px-6 py-4 text-center">
+                            <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full ml-2">
+                              {person.absences?.length || 0}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1 max-w-[150px] truncate" title={person.absences?.map(a => a.track).join(", ")}>
+                              {person.absences?.map(a => a.track).join(", ") || "—"}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none rounded-full ${
+                              (person.attendedCount || 0) >= 1 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {person.attendedCount || 0} / 2
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-6 py-4">
+                            <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-xs font-medium tracking-wide">
+                              {formatDate(person.addedAt)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center text-xs text-gray-500 max-w-[150px] truncate" title={person.absences?.map(a => a.track).join(", ")}>
+                            {person.absences?.map(a => a.track).join(", ") || "—"}
+                          </td>
+                        </>
+                      )}
                       {canWrite && (
                         <td className="px-6 py-4 text-center">
                           <button
@@ -591,7 +654,7 @@ export default function BlacklistPage() {
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">
-                {filters.search || filters.status !== "all" || filters.dateFrom || filters.dateTo ? "لا توجد نتائج مطابقة لبحثك" : "البلاك ليست فارغة"}
+                {filters.search || filters.status !== "all" || filters.dateFrom || filters.dateTo ? "لا توجد نتائج مطابقة لبحثك" : "لا يوجد احد"}
               </h3>
               <p className="text-gray-500 dark:text-gray-400">
                 {filters.search || filters.status !== "all" || filters.dateFrom || filters.dateTo ? "جرب البحث باسم أو رقم قومي مختلف أو قم بإعادة ضبط الفلاتر." : "لم يتم إدراج أي شخص في قائمة المستبعدين حالياً."}

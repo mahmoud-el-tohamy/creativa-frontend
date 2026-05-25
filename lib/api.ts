@@ -36,6 +36,9 @@ export interface BlacklistEntry {
   expiresAt: string;
   isExpired: boolean;
   notes?: string;
+  status: "warning" | "blacklisted";
+  absences: { track: string; date: string }[];
+  attendedCount: number;
 }
 
 export interface BlacklistParams {
@@ -62,8 +65,8 @@ export interface BlacklistListResponse {
 export interface BulkAddResponse {
   success: boolean;
   added: number;
-  skipped: number;
-  skippedIds: string[];
+  cleared: number;
+  upgraded: number;
 }
 
 export interface CleanupResponse {
@@ -178,22 +181,19 @@ export const authAPI = {
 };
 
 export const blacklistAPI = {
-  list: (params?: BlacklistParams) =>
-    api.get<BlacklistListResponse>("/blacklist", { params }),
-  addSingle: (entry: { name: string; nationalId: string; notes?: string }) =>
-    api.post<{ success: boolean; data: BlacklistEntry }>("/blacklist", entry),
-  bulkAdd: (entries: { name: string; nationalId: string; notes?: string }[]) =>
-    api.post<BulkAddResponse>("/blacklist/bulk", { entries }),
-  remove: (id: string) => api.delete(`/blacklist/${id}`),
-  cleanup: () => api.post<CleanupResponse>("/blacklist/cleanup"),
-  check: (nationalId: string) =>
-    api.get<CheckResponse>("/blacklist/check", { params: { nationalId } }),
-  getIds: async (): Promise<Set<string>> => {
-    const res = await api.get<BlacklistListResponse>("/blacklist", {
-      params: { limit: 5000 },
-    });
-    return new Set(res.data.data.map((e) => e.nationalId));
-  },
+  list: (params?: Record<string, unknown>) => 
+    api.get<{ success: boolean; data: BlacklistEntry[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>("/blacklist", { params }),
+  addSingle: (data: { name: string; nationalId: string; notes?: string; trackName?: string }) => 
+    api.post<{ success: boolean; data: BlacklistEntry }>("/blacklist", data),
+  bulkAdd: (data: { absentees: { name: string; nationalId: string; notes?: string }[]; attendeesNationalIds: string[]; trackName: string }) => 
+    api.post<BulkAddResponse>("/blacklist/bulk", data),
+  remove: (id: string) => api.delete<{ success: boolean }>(`/blacklist/${id}`),
+  cleanup: () => api.post<{ success: boolean; deleted: number }>("/blacklist/cleanup"),
+  getIds: () => api.get<Set<string>>("/blacklist/ids").then(res => {
+    // Convert array back to Set
+    return new Set(res.data as unknown as string[]);
+  }),
+  check: (nationalId: string) => api.get<{ isBlacklisted: boolean }>(`/blacklist/check/${nationalId}`)
 };
 
 export const usersAPI = {

@@ -35,15 +35,15 @@ export default function RootLayout({
         className={`${ibmPlexArabic.className} min-h-screen flex flex-col bg-[#F8F8F7] dark:bg-gray-900 transition-colors duration-200 antialiased`}
       >
         <NextTopLoader 
-          color="#3b82f6" 
-          initialPosition={0.08} 
+          color="#0d9488" 
+          initialPosition={0.1} 
           crawlSpeed={200} 
-          height={3} 
+          height={4} 
           crawl={true} 
-          showSpinner={false} 
+          showSpinner={true} 
           easing="ease" 
           speed={200} 
-          shadow="0 0 10px #3b82f6,0 0 5px #3b82f6" 
+          shadow="0 0 15px #0d9488,0 0 5px #0d9488" 
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
