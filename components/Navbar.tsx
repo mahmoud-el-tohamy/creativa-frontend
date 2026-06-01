@@ -25,6 +25,7 @@ const BASE_LINKS_ALL: NavLink[] = [
   { href: "/multi-day-attendance", label: "الحضور متعدد الأيام" },
   { href: "/filter",      label: "فلترة القوائم" },
   { href: "/organize",    label: "تنظيم الشيت" },
+  { href: "/hours",       label: "متابعة الساعات" },
   { href: "/certificates",label: "الشهادات" },
   { href: "/blacklist",   label: "البلاك ليست" },
 ];
@@ -125,6 +126,7 @@ export default function Navbar() {
         },
         { type: "link" as const, href: "/filter", label: "الفلترة" },
         { type: "link" as const, href: "/organize", label: "تنظيم الشيت" },
+        { type: "link" as const, href: "/hours", label: "متابعة الساعات" },
         { type: "link" as const, href: "/certificates", label: "الشهادات" },
         { type: "link" as const, href: "/blacklist", label: "البلاك ليست" },
         ...(isAdmin
@@ -166,7 +168,7 @@ export default function Navbar() {
             <div className="hidden xl:flex items-stretch h-14 md:h-16 gap-0.5" ref={desktopNavRef}>
               {desktopNavItems.map((item) => {
                 if (item.type === "link") {
-                  const isActive = pathname === item.href;
+                  const isActive = pathname === item.href || (item.href === "/hours" && pathname.startsWith("/hours"));
                   return (
                     <Link
                       key={item.href}
@@ -324,7 +326,7 @@ export default function Navbar() {
         }`}>
           <div className="py-3 flex flex-col gap-1">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href;
+              const isActive = pathname === link.href || (link.href === "/hours" && pathname.startsWith("/hours"));
               const isAdminLink = ADMIN_LINKS.some((l) => l.href === link.href);
               return (
                 <Link

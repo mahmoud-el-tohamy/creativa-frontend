@@ -20,6 +20,8 @@ interface CustomSelectProps {
   disabled?: boolean;
   id?: string;
   ariaLabel?: string;
+  /** Enables an internal search input to filter options */
+  searchable?: boolean;
 }
 
 export default function CustomSelect({
@@ -31,19 +33,37 @@ export default function CustomSelect({
   disabled = false,
   id,
   ariaLabel,
+  searchable = false,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((o) => o.value === value) ?? options[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
-    if (open) document.addEventListener("mousedown", handler);
+    if (open) {
+      document.addEventListener("mousedown", handler);
+    }
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [open, searchable]);
+
+  // Focus input when opened
+  useEffect(() => {
+    if (open && searchable && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open, searchable]);
+
+  const filteredOptions = searchable && search
+    ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
+    : options;
 
   if (asBadge) {
     // Compact badge-style trigger used in the users table role column
@@ -55,7 +75,10 @@ export default function CustomSelect({
           aria-haspopup="listbox"
           aria-expanded={open}
           disabled={disabled}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            if (!open && searchable) setSearch("");
+            setOpen((o) => !o);
+          }}
           className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all
             hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50
             ${selected.color ?? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"}
@@ -102,7 +125,10 @@ export default function CustomSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open && searchable) setSearch("");
+          setOpen((o) => !o);
+        }}
         className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl
           border border-gray-300 dark:border-gray-600
           bg-white dark:bg-gray-700
@@ -125,22 +151,38 @@ export default function CustomSelect({
         <div className="absolute z-[100] top-full mt-1.5 w-full
           bg-white dark:bg-gray-800
           border border-gray-200 dark:border-gray-600
-          rounded-xl shadow-2xl overflow-hidden"
+          rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-64"
         >
-          {options.map((o) => (
-            <button
-              key={o.value}
-              onClick={() => { onChange(o.value); setOpen(false); }}
-              className={`w-full text-right px-4 py-2.5 text-sm transition-colors
-                hover:bg-blue-50 dark:hover:bg-gray-700
-                ${o.value === value
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
-                  : "text-gray-700 dark:text-gray-200 font-medium"
-                }`}
-            >
-              {o.label}
-            </button>
-          ))}
+          {searchable && (
+            <div className="p-2 border-b border-gray-100 dark:border-gray-700 shrink-0">
+              <input
+                ref={inputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ابحث..."
+                className="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+          <div className="overflow-y-auto">
+            {filteredOptions.length > 0 ? filteredOptions.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                className={`w-full text-right px-4 py-2.5 text-sm transition-colors
+                  hover:bg-blue-50 dark:hover:bg-gray-700
+                  ${o.value === value
+                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
+                    : "text-gray-700 dark:text-gray-200 font-medium"
+                  }`}
+              >
+                {o.label}
+              </button>
+            )) : (
+              <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">لا توجد نتائج</div>
+            )}
+          </div>
         </div>
       )}
     </div>

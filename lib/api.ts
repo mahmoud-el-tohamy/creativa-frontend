@@ -127,6 +127,143 @@ export interface AuditListResponse {
   };
 }
 
+// ─── Hours Tracking Types ─────────────────────────────────────────────────────
+
+export type ProgramName =
+  | "Career Development"
+  | "Tech"
+  | "Freelancing"
+  | "Entrepreneurship"
+  | "Awareness event"
+  | "Hackathons / Competitions"
+  | "Acceleration program";
+
+export type TimetableProgram =
+  | "Entrepreneurship / Technology transfer"
+  | "Awareness events"
+  | "Acceleration program"
+  | "Freelancing coaches"
+  | "Hackathons / Competitions"
+  | "Career development";
+
+export interface TrainingSession {
+  _id: string;
+  programName: ProgramName;
+  sessionName: string;
+  date: string;
+  hours: number;
+  mode: "online" | "offline";
+  instructorId: string;
+  instructorName: string;
+  attendeesCount: number;
+  type: "Training" | "Awareness Event";
+  evaluationReportUrl: string;
+  trainingReportUrl: string;
+  dayValue: number;
+  timetableProgram: TimetableProgram;
+  fiscalYear: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TrainingSessionPayload {
+  programName: ProgramName;
+  sessionName: string;
+  date: string;
+  hours: number;
+  mode: "online" | "offline";
+  instructorId: string;
+  instructorName: string;
+  attendeesCount: number;
+  type: "Training" | "Awareness Event";
+  evaluationReportUrl?: string;
+  trainingReportUrl?: string;
+}
+
+export interface Instructor {
+  _id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface SessionsParams {
+  fiscalYear?: string;
+  programName?: string;
+  instructorId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  mode?: string;
+  page?: number;
+  limit?: number;
+  sort?: "newest" | "oldest" | "name";
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface SessionsListResponse {
+  success: boolean;
+  data: TrainingSession[];
+  pagination: Pagination;
+}
+
+export interface IProgramDayMap {
+  [day: number]: number;
+  monthTotal: number;
+}
+
+export interface IMonthData {
+  monthIndex: number;
+  monthName: string;
+  year: number;
+  daysInMonth: number;
+  monthlyDays: number;
+  programs: Record<TimetableProgram, IProgramDayMap>;
+}
+
+export interface IAnnualTotal {
+  program: TimetableProgram;
+  totalDays: number;
+  targetDays: number;
+  completionPct: number;
+  q1: number;
+  q2: number;
+  q3: number;
+  q4: number;
+}
+
+export interface IQuarterlyData {
+  quarter: "Q1" | "Q2" | "Q3" | "Q4";
+  months: string[];
+  totalDays: number;
+  firstHalfDays: number;
+  secondHalfDays: number;
+}
+
+export interface TimetableSnapshot {
+  _id: string;
+  fiscalYear: string;
+  months: IMonthData[];
+  annualTotals: IAnnualTotal[];
+  quarterly: IQuarterlyData[];
+  totalDays: number;
+  sessionCount: number;
+  lastUpdated: string;
+  lastUpdatedBy: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; data: Record<string, unknown>; errors: string[] }>;
+}
+
 // Axios Instance Configuration
 
 const api = axios.create({
@@ -236,4 +373,54 @@ export interface ChartDataBucket {
 export const dashboardAPI = {
   getStats: (range: string = "monthly") => 
     api.get<{ success: boolean; data: ChartDataBucket[] }>(`/dashboard/stats?range=${range}`),
+};
+
+// ─── Hours API ────────────────────────────────────────────────────────────────
+
+export const hoursAPI = {
+  getSessions: (params?: SessionsParams) =>
+    api.get<SessionsListResponse>("/hours/sessions", { params }),
+
+  createSession: (data: TrainingSessionPayload) =>
+    api.post<{ success: boolean; data: TrainingSession }>("/hours/sessions", data),
+
+  updateSession: (id: string, data: TrainingSessionPayload) =>
+    api.put<{ success: boolean; data: TrainingSession }>(`/hours/sessions/${id}`, data),
+
+  deleteSession: (id: string) =>
+    api.delete<{ success: boolean }>(`/hours/sessions/${id}`),
+
+  deleteMultipleSessions: (ids: string[]) =>
+    api.delete<{ success: boolean; deletedCount?: number }>("/hours/sessions/bulk", { data: { ids } }),
+
+  getInstructors: () =>
+    api.get<{ success: boolean; data: Instructor[] }>("/hours/instructors"),
+
+  addInstructor: (name: string) =>
+    api.post<{ success: boolean; data: Instructor }>("/hours/instructors", { name }),
+
+  getTimetable: (fiscalYear: string) =>
+    api.get<{ success: boolean; data: TimetableSnapshot }>(`/hours/timetable/${fiscalYear}`),
+
+  getFiscalYears: () =>
+    api.get<{ success: boolean; data: string[] }>("/hours/timetable"),
+
+  importSessions: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.post<ImportResult>("/hours/import", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  exportTracking: (fy: string) =>
+    api.get(`/hours/export/tracking`, {
+      params: { fiscalYear: fy },
+      responseType: "blob"
+    }),
+  exportTimetable: (fy: string) =>
+    api.get(`/hours/export/timetable`, {
+      params: { fiscalYear: fy },
+      responseType: "blob"
+    }),
 };
