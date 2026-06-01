@@ -58,9 +58,10 @@ The system is fully installable as a standalone Progressive Web App on mobile an
 ### 🚫 Blacklist & Candidate Filtering
 
 - **Candidate filtering**: Upload a candidate list, compare against current blacklist national IDs, preview clean and excluded records, and export the clean sheet.
-- **Blacklist console**: Search, sort, date-filter, status-filter, paginate, add, remove, and bulk-delete blacklist records.
+- **Blacklist console**: Search, sort, date-filter, status-filter, paginate, add, remove, and bulk-delete blacklist records. Includes a streamlined glassmorphism UI with framer-motion animations.
+- **Dynamic Tracks**: Filter blacklisted users by specific training tracks, synchronized with the attendance module.
 - **Automatic expiry cleanup**: Expired blacklist entries are verified and cleaned when the blacklist page loads.
-- **National ID validation**: Prevents malformed IDs from being added during attendance processing.
+- **National ID validation**: Prevents malformed IDs from being added during attendance processing, with strict regex patterns ensuring format compliance.
 
 ### 🧾 Sheet Organization
 
@@ -86,11 +87,12 @@ The certificate generator accepts a certificate background image and an Excel li
 | **Runtime UI** | React 19.2.4 |
 | **Language** | TypeScript 5 |
 | **Styling** | Tailwind CSS v4 via `@tailwindcss/postcss` |
-| **Data Fetching** | Axios (with interceptors) |
-| **State Management** | React Context (`AuthContext`) |
+| **Data Fetching** | Axios (with interceptors) & SWR |
+| **State Management** | React Context (`AuthContext`) & Custom Hooks (`useTableFilters`) |
 | **Excel Logic** | SheetJS (`xlsx`) & `xlsx-js-style` |
 | **PDF/Archives** | jsPDF, JSZip |
 | **Charts** | Recharts |
+| **Animations** | Framer Motion |
 | **Theming** | `next-themes` |
 | **PWA Support** | `next-pwa` |
 | **Observability** | Vercel Analytics and Speed Insights |
@@ -114,8 +116,13 @@ Most operational workflows are intentionally client-heavy. Excel parsing, list c
 
 - **`Navbar.tsx`**: Role-aware navigation with grouped attendance/admin menus, user profile controls, responsive mobile menu behavior, and theme switching.
 - **`RouteGuard.tsx`**: Shared protected-route wrapper that redirects unauthenticated users and blocks unauthorized roles.
-- **`WorkshopBreakdownTable.tsx`**: Componentized, expanded-width UI for previewing chronologically sorted workshop groups before export.
+- **`TrackSelector.tsx`**: Shared track selection component allowing dynamic addition and removal of workshop tracks across modules.
+- **`FilterBar.tsx`**: Centralized filtering component standardizing search, date ranges, sorting, and pagination controls.
 - **`MultiDayAttendance.tsx`**: Dedicated multi-day attendance processor used by the `/multi-day-attendance` route.
+
+### Architecture Highlights (Refactoring)
+- **DRY Principles**: Widespread usage of shared components (`shared/` directory) and custom hooks (`hooks/useTableFilters.ts`) to reduce duplication.
+- **Componentized Views**: Complex pages like the Blacklist are decoupled into discrete modular modals (`AddModal`, `DeleteModal`, `BulkDeleteModal`).
 
 ---
 
@@ -135,18 +142,22 @@ Most operational workflows are intentionally client-heavy. Excel parsing, list c
 │   ├── 📄 layout.tsx             # Root RTL layout, providers, analytics, nav
 │   └── 📄 page.tsx               # Dashboard and blacklist analytics
 ├── 📁 components/                # Shared UI and workflow components
+│   ├── 📁 blacklist/             # Blacklist-specific components and modals
+│   ├── 📁 organize/              # Sheet organization components
+│   ├── 📁 shared/                # Highly reusable cross-app components (FilterBar, TrackSelector)
 │   ├── 📁 ui/                    # Custom form controls
 │   ├── 📄 MultiDayAttendance.tsx
 │   ├── 📄 Navbar.tsx
 │   ├── 📄 RouteGuard.tsx
 │   └── 📄 ThemeProvider.tsx
 ├── 📁 context/                   # AuthContext and global auth state
-├── 📁 hooks/                     # Authentication hooks
+├── 📁 hooks/                     # Custom logic hooks (useTableFilters, etc.)
 ├── 📁 lib/                       # API clients, validation, Excel modules
 │   ├── 📄 api.ts                 # Centralized Axios instance & API functions
 │   ├── 📄 audit.ts               # Audit fetch wrappers
 │   ├── 📄 blacklist.ts           # Blacklist fetch wrappers
 │   ├── 📄 excel.ts               # SheetJS parsing & exports
+│   ├── 📄 tracks.ts              # Tracks fetch wrappers
 │   └── 📄 validation.ts          # National ID validation
 ├── 📁 public/                    # Logo and static assets
 ├── 📄 middleware.ts              # Next.js route protection
