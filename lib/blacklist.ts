@@ -1,25 +1,30 @@
 import { blacklistAPI, BlacklistEntry } from "./api";
 export type { BlacklistEntry };
 
-export async function addToBlacklist(entry: Omit<BlacklistEntry, "id" | "addedAt" | "addedBy" | "addedByName" | "expiresAt" | "isExpired">): Promise<void> {
+export async function addToBlacklist(entry: { name: string; nationalId: string; notes?: string; trackName?: string }): Promise<void> {
   await blacklistAPI.addSingle({
     name: entry.name,
     nationalId: entry.nationalId,
     notes: entry.notes || "",
+    trackName: entry.trackName || "غير محدد",
   });
 }
 
 export async function addManyToBlacklist(
-  entries: Omit<BlacklistEntry, "id" | "addedAt" | "addedBy" | "addedByName" | "expiresAt" | "isExpired">[]
-): Promise<{ added: number; skipped: number }> {
-  const res = await blacklistAPI.bulkAdd(
-    entries.map(e => ({
+  absentees: { name: string; nationalId: string; notes?: string }[],
+  attendeesNationalIds: string[],
+  trackName: string
+): Promise<{ added: number; cleared: number; upgraded: number }> {
+  const res = await blacklistAPI.bulkAdd({
+    absentees: absentees.map(e => ({
       name: e.name,
       nationalId: e.nationalId,
       notes: e.notes || "",
-    }))
-  );
-  return { added: res.data.added, skipped: res.data.skipped };
+    })),
+    attendeesNationalIds,
+    trackName
+  });
+  return { added: res.data.added, cleared: res.data.cleared, upgraded: res.data.upgraded };
 }
 
 export async function getBlacklist(params?: Record<string, unknown>): Promise<BlacklistEntry[]> {
