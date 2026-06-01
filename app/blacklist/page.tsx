@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useReducer, useRef } from "react";
-import { getBlacklist, addToBlacklist, removeFromBlacklist, cleanupExpired, BlacklistEntry } from "@/lib/blacklist";
+import { getBlacklist, addToBlacklist, removeFromBlacklist, BlacklistEntry } from "@/lib/blacklist";
 import useSWR from "swr";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
@@ -245,7 +245,6 @@ export default function BlacklistPage() {
   const canWrite = user?.role === "admin" || user?.role === "employee";
 
   const fetcher = async () => {
-    await cleanupExpired();
     return await getBlacklist();
   };
 
