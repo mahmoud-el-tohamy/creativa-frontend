@@ -55,6 +55,13 @@ The system is fully installable as a standalone Progressive Web App on mobile an
 - **Swap detection**: Warns operators when the attendance file appears larger than the registration file, reducing accidental reversed uploads.
 - **Multi-day attendance**: Aggregates repeated attendance rows by participant ID, applies configurable minimum attendance thresholds, separates passed and failed participants, and adds eligible failures to the blacklist.
 
+### ⏱️ Hours & Timetable Tracking
+
+- **Session Management**: Log training sessions, modes (online/offline), hours, attendee counts, and evaluation links.
+- **Bulk Excel Import**: Effortlessly import multiple sessions via Excel sheets with built-in deduplication.
+- **Dynamic Timetables**: Automatically generates comprehensive visual timetables mapped against customizable fiscal years.
+- **Advanced Exporting**: Export detailed tracking logs or structured timetable spreadsheets with a single click.
+
 ### 🚫 Blacklist & Candidate Filtering
 
 - **Candidate filtering**: Upload a candidate list, compare against current blacklist national IDs, preview clean and excluded records, and export the clean sheet.
