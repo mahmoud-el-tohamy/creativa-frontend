@@ -223,3 +223,17 @@ export const auditAPI = {
   list: (params?: Record<string, unknown>) =>
     api.get<{ success: boolean; count: number; data: AuditLog[] }>("/audit", { params }),
 };
+
+export interface ChartDataBucket {
+  label: string;
+  fullLabel?: string;
+  additions: number;
+  cumulative: number;
+  key: string;
+  rawDate: Date;
+}
+
+export const dashboardAPI = {
+  getStats: (range: string = "monthly") => 
+    api.get<{ success: boolean; data: ChartDataBucket[] }>(`/dashboard/stats?range=${range}`),
+};
