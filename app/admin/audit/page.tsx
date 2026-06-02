@@ -26,6 +26,11 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   user_role_change:     { label: "تغيير الدور",          color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
   login:                { label: "تسجيل دخول",          color: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400" },
   logout:               { label: "تسجيل خروج",          color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+  training_session_add: { label: "إضافة تدريب", color: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300" },
+  training_session_update: { label: "تعديل تدريب", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+  training_session_delete: { label: "حذف تدريب", color: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
+  training_session_import: { label: "استيراد تدريبات", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
+  timetable_rebuild: { label: "إعادة بناء التايم تيبول", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
 };
 
 const ACTION_FILTER_OPTIONS = [
@@ -41,6 +46,11 @@ const ACTION_FILTER_OPTIONS = [
   { value: "user_deactivate", label: "تعطيل مستخدم" },
   { value: "user_delete", label: "حذف مستخدم نهائي" },
   { value: "login", label: "تسجيل دخول" },
+  { value: "training_session_add", label: "إضافة تدريب" },
+  { value: "training_session_update", label: "تعديل تدريب" },
+  { value: "training_session_delete", label: "حذف تدريب" },
+  { value: "training_session_import", label: "استيراد تدريبات" },
+  { value: "timetable_rebuild", label: "إعادة بناء التايم تيبول" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
