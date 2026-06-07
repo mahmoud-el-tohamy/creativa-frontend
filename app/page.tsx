@@ -16,7 +16,6 @@ import {
   ComposedChart,
   ResponsiveContainer,
   LabelList,
-  Label,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -603,19 +602,19 @@ export default function Dashboard() {
                 return (
                   <ResponsiveContainer width="100%" height={height}>
                     <PieChart>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      <Pie data={modeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none" labelLine={false} label={((props: any) => {
+                      <Pie data={modeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none" labelLine={false} label={(props) => {
+                        const { cx, cy, midAngle, outerRadius, fill, pct } = props as unknown as { cx: number; cy: number; midAngle: number; outerRadius: number; fill: string; pct: number };
                         const RADIAN = Math.PI / 180;
-                        const radius = props.outerRadius + 12;
-                        const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-                        const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
-                        if (props.pct < 5) return null;
+                        const radius = outerRadius + 12;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        if (pct < 5) return null;
                         return (
-                          <text x={x} y={y} fill={props.fill} textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={14} fontWeight="bold">
-                            {`${props.pct}%`}
+                          <text x={x} y={y} fill={fill} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={14} fontWeight="bold">
+                            {`${pct}%`}
                           </text>
                         );
-                      }) as any}>
+                      }}>
                         {modeData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
