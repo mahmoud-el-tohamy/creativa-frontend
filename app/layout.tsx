@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SWRConfig } from "swr";
+import { swrConfig } from "@/lib/swr-config";
 
 const ibmPlexArabic = IBM_Plex_Sans_Arabic({
   subsets: ["arabic"],
@@ -34,6 +36,19 @@ export default function RootLayout({
       <body
         className={`${ibmPlexArabic.className} min-h-screen flex flex-col bg-[#F8F8F7] dark:bg-gray-900 transition-colors duration-200 antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let registration of registrations) {
+                    registration.unregister();
+                  }
+                });
+              }
+            `,
+          }}
+        />
         <NextTopLoader 
           color="#0d9488" 
           initialPosition={0.1} 
@@ -46,10 +61,12 @@ export default function RootLayout({
           shadow="0 0 15px #0d9488,0 0 5px #0d9488" 
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            <Navbar />
-            {children}
-          </AuthProvider>
+          <SWRConfig value={swrConfig}>
+            <AuthProvider>
+              <Navbar />
+              {children}
+            </AuthProvider>
+          </SWRConfig>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

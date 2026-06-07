@@ -1,5 +1,19 @@
 import axios from "axios";
 
+// PERF: Expose pingServer to proactively wake up backend serverless functions
+export function pingServer(): void {
+  api.get("/ping").catch(() => {});
+}
+
+// PERF: Helper for cancelling in-flight requests on component unmount
+export function createCancelToken() {
+  const controller = new AbortController();
+  return {
+    signal: controller.signal,
+    cancel: () => controller.abort(),
+  };
+}
+
 // TypeScript Interfaces for API Responses
 
 export type UserRole = "admin" | "employee" | "viewer";
@@ -346,11 +360,16 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
+    // Handle 503 (DB cold start) — retry once after 2 seconds
+    if (error.response?.status === 503 && !(originalRequest as Record<string, unknown>)._retried503) {
+      (originalRequest as Record<string, unknown>)._retried503 = true;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return api(originalRequest);
+    }
+    
     // Check if error is 401 and we haven't retried yet, and it's not a login/refresh request
     if (
-      error.response &&
-      error.response.status === 401 &&
-      !originalRequest._retry &&
+      error.response?.status === 401 && !originalRequest._retry &&
       !originalRequest.url?.includes("/auth/login") &&
       !originalRequest.url?.includes("/auth/refresh")
     ) {
@@ -493,7 +512,7 @@ export const hoursAPI = {
     }),
 
   getDashboardStats: (fiscalYear?: string, quarter?: string) =>
-    api.get<TrainingDashboardStats>(`/hours/dashboard-stats`, { params: { fiscalYear, quarter } }),
+    api.get<TrainingDashboardStats>(`/hours/dashboard-stats`, { params: { fiscalYear, quarter, _t: Date.now() } }),
 };
 
 export const attendanceSheetAPI = {
