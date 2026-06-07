@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getBlacklist, BlacklistEntry } from "@/lib/blacklist";
-import { dashboardAPI, ChartDataBucket } from "@/lib/api";
+import { dashboardAPI, ChartDataBucket, hoursAPI, TrainingDashboardStats } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LineChart,
@@ -13,6 +13,10 @@ import {
   Cell,
   BarChart,
   Bar,
+  ComposedChart,
+  ResponsiveContainer,
+  LabelList,
+  Label,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -22,6 +26,36 @@ import {
 
 // ADDED: Time Range Selector
 export type TimeRange = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+
+function getCurrentFiscalYear() {
+  const d = new Date();
+  const m = d.getMonth();
+  const y = d.getFullYear();
+  if (m >= 4) return `FY${y}-${y + 1}`;
+  return `FY${y - 1}-${y}`;
+}
+
+const PROGRAM_COLORS: Record<string, string> = {
+  "Entrepreneurship / Technology transfer": "#1D9E75",
+  "Career development": "#7C3AED",
+  "Freelancing coaches": "#F59E0B",
+  "Acceleration program": "#6B7280",
+  "Hackathons / Competitions": "#EF4444",
+  "Awareness events": "#EAB308",
+  "Incubation": "#9333EA",
+  "Consultation": "#0284C7"
+};
+
+const PROGRAM_LABELS: Record<string, string> = {
+  "Entrepreneurship / Technology transfer": "ريادة أعمال",
+  "Career development": "تطوير مهني",
+  "Freelancing coaches": "عمل حر",
+  "Acceleration program": "مسرعة أعمال",
+  "Hackathons / Competitions": "هاكاثون ومسابقات",
+  "Awareness events": "نشر وعي",
+  "Incubation": "احتضان",
+  "Consultation": "استشارات"
+};
 
 // Removed client-side buildChartData logic. Server now handles it via /api/dashboard/stats
 
@@ -207,6 +241,31 @@ export default function Dashboard() {
   const [warningsTrackData, setWarningsTrackData] = useState<{ name: string; value: number }[]>([]);
   const [blacklistTrackData, setBlacklistTrackData] = useState<{ name: string; value: number }[]>([]);
 
+  const [trainingStats, setTrainingStats] = useState<TrainingDashboardStats | null>(null);
+  const [trainingStatsLoading, setTrainingStatsLoading] = useState(true);
+  const [selectedFY, setSelectedFY] = useState<string>("");
+  const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
+  const [fiscalYears, setFiscalYears] = useState<string[]>([]);
+  const [trainingTimeRange, setTrainingTimeRange] = useState<TimeRange>("monthly");
+
+  // Helper: Filter data by time range for the Blacklist section
+  const filterEntriesByTimeRange = (entries: BlacklistEntry[], range: TimeRange) => {
+    const now = new Date().getTime();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    
+    let daysToKeep = 0;
+    if (range === "daily") daysToKeep = 14;
+    else if (range === "weekly") daysToKeep = 8 * 7;
+    else if (range === "monthly") daysToKeep = 6 * 30;
+    else if (range === "quarterly") daysToKeep = 4 * 90;
+    else if (range === "yearly") daysToKeep = 3 * 365;
+
+    if (daysToKeep === 0) return entries; // Fallback
+
+    const threshold = now - (daysToKeep * msPerDay);
+    return entries.filter(e => new Date(e.addedAt).getTime() >= threshold);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -233,13 +292,15 @@ export default function Dashboard() {
           return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
         }).length);
 
-        // Default load
         if (statsResponse.data.success) {
           setChartData(statsResponse.data.data);
         }
-        setTracksData(buildTracksChartData(sortedData));
-        setWarningsTrackData(buildTracksChartData(sortedData.filter(e => e.status === "warning")));
-        setBlacklistTrackData(buildTracksChartData(sortedData.filter(e => e.status === "blacklisted")));
+        
+        // Use the initial "monthly" timeRange to filter tracks
+        const initialFiltered = filterEntriesByTimeRange(sortedData, "monthly");
+        setTracksData(buildTracksChartData(initialFiltered));
+        setWarningsTrackData(buildTracksChartData(initialFiltered.filter(e => e.status === "warning")));
+        setBlacklistTrackData(buildTracksChartData(initialFiltered.filter(e => e.status === "blacklisted")));
       } catch (err) {
         console.error(err);
       } finally {
@@ -249,6 +310,39 @@ export default function Dashboard() {
 
     fetchData();
   }, []);
+
+  // ━━━ ADDED: Fetch Fiscal Years & Default Selection ━━━
+  useEffect(() => {
+    hoursAPI.getFiscalYears().then((res) => {
+      if (res.data.success && res.data.data.length > 0) {
+        setFiscalYears(res.data.data);
+        setSelectedFY(res.data.data[0]);
+      } else {
+        setFiscalYears([getCurrentFiscalYear()]);
+        setSelectedFY(getCurrentFiscalYear());
+      }
+    }).catch(() => {
+      setFiscalYears([getCurrentFiscalYear()]);
+      setSelectedFY(getCurrentFiscalYear());
+    });
+  }, []);
+
+  // ━━━ ADDED: Fetch Training Stats ━━━
+  useEffect(() => {
+    if (!selectedFY) return;
+    const fetchStats = async () => {
+      setTrainingStatsLoading(true);
+      try {
+        const res = await hoursAPI.getDashboardStats(selectedFY, selectedQuarter);
+        setTrainingStats(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setTrainingStatsLoading(false);
+      }
+    };
+    void fetchStats();
+  }, [selectedFY, selectedQuarter]);
 
   const handleRangeChange = async (range: TimeRange) => {
     setTimeRange(range);
@@ -391,6 +485,7 @@ export default function Dashboard() {
             <label htmlFor="dashboard-export-range" className="sr-only">تصدير بيانات إكسيل</label>
             <select
               id="dashboard-export-range"
+              name="dashboard-export-range"
               className="h-full bg-transparent text-sm font-semibold text-gray-800 dark:text-gray-200 outline-none px-4 flex-1 border-l border-gray-100 dark:border-gray-700 appearance-none cursor-pointer"
               onChange={(e) => { if (e.target.value) { void downloadExcel(e.target.value); e.target.value = ""; } }}
               defaultValue=""
@@ -414,21 +509,295 @@ export default function Dashboard() {
         <StatCard title="إضافات هذا الشهر" value={thisMonthCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/20" border="border-blue-100 dark:border-blue-900/30" />
       </section>
 
+      {/* ━━━ ADDED: Fiscal Year Selector ━━━ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">تحليلات التدريب</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">تتبع الأداء وتوزيع الجلسات التدريبية</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <select
+              id="fiscal-year-selector"
+              name="fiscal-year-selector"
+              value={selectedFY}
+              onChange={(e) => setSelectedFY(e.target.value)}
+              className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 pl-10 pr-4 rounded-xl font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer min-w-[140px]"
+            >
+              <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">كل السنوات</option>
+              {fiscalYears.map(fy => (
+                <option key={fy} value={fy} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{fy}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </div>
+          
+          <div className="relative">
+            <select
+              id="quarter-selector"
+              name="quarter-selector"
+              value={selectedQuarter}
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 pl-10 pr-4 rounded-xl font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer min-w-[140px]"
+            >
+              <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">كل الأرباع</option>
+              <option value="Q1" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">الربع الأول (مايو - يوليو)</option>
+              <option value="Q2" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">الربع الثاني (أغسطس - أكتوبر)</option>
+              <option value="Q3" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">الربع الثالث (نوفمبر - يناير)</option>
+              <option value="Q4" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">الربع الرابع (فبراير - أبريل)</option>
+            </select>
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ━━━ ADDED: Training Stats Cards Row ━━━ */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard title="إجمالي أيام التدريب" value={trainingStats?.totalTrainingDays || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} color="text-teal-600 dark:text-teal-400" bg="bg-teal-50 dark:bg-teal-900/20" border="border-teal-100 dark:border-teal-900/30" />
+        <StatCard title="إجمالي الجلسات" value={trainingStats?.totalSessions || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/20" border="border-blue-100 dark:border-blue-900/30" />
+        <StatCard title="إجمالي المتدربين" value={trainingStats?.totalAttendees || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />} color="text-purple-600 dark:text-purple-400" bg="bg-purple-50 dark:bg-purple-900/20" border="border-purple-100 dark:border-purple-900/30" />
+        <StatCard title="إجمالي الساعات" value={trainingStatsLoading ? 0 : `${trainingStats?.totalHours || 0} س`} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />} color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-900/20" border="border-green-100 dark:border-green-900/30" />
+      </section>
+
+      {/* ━━━ ADDED: Charts Row 1: Program Performance ━━━ */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">أيام التدريب حسب البرنامج</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">إجمالي أيام التدريب موزعة على البرامج</p>
+          <div className="w-full" style={{ height: Math.max(250, (trainingStats?.programDays?.length || 0) * 50 + 50) }} dir="ltr">
+            <ChartContainer loading={trainingStatsLoading}>
+              {({ height }) => (
+                <ResponsiveContainer width="100%" height={height}>
+                  <BarChart data={trainingStats?.programDays || []} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
+                    <YAxis dataKey="program" type="category" tickFormatter={(val) => PROGRAM_LABELS[val as string] || val} width={90} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 14, fontWeight: 700 }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                    <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
+                      {trainingStats?.programDays.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program as string] || "#94a3b8"} />
+                      ))}
+                      <LabelList dataKey="totalDays" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </ChartContainer>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">توزيع طرق التدريب</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">أونلاين مقابل أوفلاين</p>
+          <div className="w-full h-[250px] relative" dir="ltr">
+            <ChartContainer loading={trainingStatsLoading}>
+              {({ height }) => {
+                const modeData = [
+                  { name: "أونلاين", value: trainingStats?.modeBreakdown.online || 0, fill: "#1D9E75", pct: trainingStats?.modeBreakdown.onlinePct || 0 },
+                  { name: "أوفلاين", value: trainingStats?.modeBreakdown.offline || 0, fill: "#64748b", pct: trainingStats?.modeBreakdown.offlinePct || 0 },
+                ];
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <PieChart>
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      <Pie data={modeData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none" labelLine={false} label={((props: any) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = props.outerRadius + 12;
+                        const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
+                        const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
+                        if (props.pct < 5) return null;
+                        return (
+                          <text x={x} y={y} fill={props.fill} textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={14} fontWeight="bold">
+                            {`${props.pct}%`}
+                          </text>
+                        );
+                      }) as any}>
+                        {modeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              }}
+            </ChartContainer>
+
+            {!trainingStatsLoading && (
+              <div className="absolute inset-0 pb-[36px] pointer-events-none flex flex-col items-center justify-center">
+                <span className="text-3xl font-extrabold text-gray-900 dark:text-white leading-none">
+                  {trainingStats?.totalSessions || 0}
+                </span>
+                <span className="text-sm font-bold text-gray-500 dark:text-gray-400 mt-1">
+                  جلسة
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━ ADDED: Charts Row 2: Activity Over Time ━━━ */}
+      <section className="grid grid-cols-1 gap-8 mb-8">
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 sm:p-8 flex flex-col">
+          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">النشاط الشهري للتدريب</h2>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">مقارنة بين الجلسات، أيام التدريب، والحضور</p>
+            </div>
+            <div className="relative">
+              <select id="training-time-range" name="training-time-range" value={trainingTimeRange} onChange={(e) => setTrainingTimeRange(e.target.value as TimeRange)} className="appearance-none bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 pl-10 pr-6 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm font-semibold cursor-pointer w-full sm:w-auto min-w-[160px]">
+                <option value="daily" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">يومياً (تاريخ الجلسة)</option>
+                <option value="monthly" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">شهرياً</option>
+              </select>
+            </div>
+          </div>
+          <div className="w-full relative h-[300px] sm:h-[350px]">
+            <ChartContainer loading={trainingStatsLoading}>
+              {({ height }) => {
+                const timelineData = trainingTimeRange === "daily" ? trainingStats?.dailyActivity : trainingStats?.monthlyActivity;
+                const xAxisKey = trainingTimeRange === "daily" ? "date" : "month";
+                
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <ComposedChart data={(timelineData as unknown[]) || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} className="dir-ltr">
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                      <XAxis dataKey={xAxisKey} axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} dy={10} />
+                      <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} tickCount={6} />
+                      <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#ef4444', fontSize: 13, fontWeight: 600 }} tickCount={6} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                      <Legend verticalAlign="top" height={36} iconType="circle" />
+                      <Bar yAxisId="left" dataKey="days" name="أيام التدريب" fill="#1D9E75" fillOpacity={0.8} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                      <Bar yAxisId="left" dataKey="sessions" name="الجلسات" fill="#7C3AED" fillOpacity={0.6} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                      <Line yAxisId="right" type="monotone" dataKey="attendees" name="المتدربون" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4, fill: '#F59E0B' }} activeDot={{ r: 6 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                );
+              }}
+            </ChartContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━ ADDED: Charts Row 3: Instructors + Type ━━━ */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">أكثر المدربين نشاطاً</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">أعلى 5 مدربين تقديماً للجلسات</p>
+          <div className="w-full" style={{ height: Math.max(250, (trainingStats?.topInstructors?.length || 0) * 50 + 50) }} dir="ltr">
+            <ChartContainer loading={trainingStatsLoading}>
+              {({ height }) => {
+                if (trainingStats && trainingStats.topInstructors.length === 0) {
+                  return (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-400 dark:text-gray-500 font-medium text-sm">لم يتم تسجيل مدربين بعد</p>
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <BarChart data={trainingStats?.topInstructors || []} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="instructorGrad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#0d9488" />
+                          <stop offset="100%" stopColor="#2dd4bf" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
+                      <YAxis dataKey="name" type="category" width={90} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 14, fontWeight: 700 }} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                      <Bar dataKey="sessions" name="الجلسات" fill="url(#instructorGrad)" radius={[0, 4, 4, 0]} maxBarSize={45}>
+                        <LabelList dataKey="sessions" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              }}
+            </ChartContainer>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">توزيع نوع التدريب</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">التدريب مقابل فعاليات الوعي</p>
+          <div className="w-full h-[250px]" dir="ltr">
+            <ChartContainer loading={trainingStatsLoading}>
+              {({ height }) => {
+                const RADIAN = Math.PI / 180;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const renderCustomizedLabel = ({ cx = 0, cy = 0, midAngle = 0, outerRadius = 0, percent = 0, fill }: any) => {
+                  const radius = outerRadius + 20;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  if (percent < 0.01) return null;
+                  return (
+                    <text x={x} y={y} fill={fill} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={16} fontWeight="bold">
+                      {`${(percent * 100).toFixed(0)}%`}
+                    </text>
+                  );
+                };
+                
+                const typeData = trainingStats?.typeBreakdown.map(t => ({
+                  ...t,
+                  name: t.type,
+                  fill: t.type === "Training" || t.type === "تدريب" ? "#1D9E75" : t.type === "Awareness Event" ? "#F59E0B" : t.type === "Incubation" ? "#9333EA" : "#0284C7"
+                })) || [];
+
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <PieChart>
+                      <Pie data={typeData} cx="50%" cy="50%" outerRadius={100} dataKey="count" nameKey="name" stroke="none" labelLine={false} label={renderCustomizedLabel}>
+                        {typeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              }}
+            </ChartContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* ━━━ VISUAL SEPARATOR ━━━ */}
+      <div className="py-8">
+        <hr className="border-t border-gray-200 dark:border-gray-800" />
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">تحليلات البلاك ليست</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">تتبع نشاط البلاك ليست والإنذارات</p>
+        </div>
+        <div className="relative">
+          <select id="blacklist-time-range" name="blacklist-time-range" value={timeRange} onChange={(e) => handleRangeChange(e.target.value as TimeRange)} className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 pl-10 pr-4 rounded-xl font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer min-w-[180px]">
+            <option value="daily" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">يومياً (آخر 14 يوم)</option>
+            <option value="weekly" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">أسبوعياً (آخر 8 أسابيع)</option>
+            <option value="monthly" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">شهرياً (آخر 6 شهور)</option>
+            <option value="quarterly" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">ربع سنوي (آخر 4 أرباع)</option>
+            <option value="yearly" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">سنوياً (آخر 3 سنوات)</option>
+          </select>
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+          </div>
+        </div>
+      </div>
+
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 sm:p-8 flex flex-col min-h-[450px]">
           <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">معدل الإضافات (زمني)</h2>
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">مقارنة بين الإضافات الجديدة والإجمالي التراكمي</p>
-            </div>
-            <div className="relative">
-              <select value={timeRange} onChange={(e) => handleRangeChange(e.target.value as TimeRange)} className="appearance-none bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2.5 pl-10 pr-6 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm font-semibold cursor-pointer w-full sm:w-auto min-w-[160px]">
-                <option value="daily">يومياً (آخر 14 يوم)</option>
-                <option value="weekly">أسبوعياً (آخر 8 أسابيع)</option>
-                <option value="monthly">شهرياً (آخر 6 شهور)</option>
-                <option value="quarterly">ربع سنوي (آخر 4 أرباع)</option>
-                <option value="yearly">سنوياً (آخر 3 سنوات)</option>
-              </select>
             </div>
           </div>
           <div className="flex-1 w-full relative min-h-[300px]">
@@ -451,7 +820,7 @@ export default function Dashboard() {
         <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">أكثر التراكات غياباً</h2>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">توزيع المتغيبين على أعلى التراكات</p>
-          <div className="flex-1 w-full min-h-[300px]">
+          <div className="flex-1 w-full min-h-[300px]" dir="ltr">
             <ChartContainer loading={loading}>
               {({ width, height }) => (
                 <PieChart width={width} height={height}>
@@ -589,14 +958,14 @@ function StatCard({
     <div
       className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex h-[112px] sm:h-[128px] items-center justify-between gap-4 w-full min-w-0 overflow-hidden contain-layout"
     >
-      <div className="space-y-1 min-w-0">
-        <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+      <div className="space-y-2 min-w-0">
+        <p className="text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400 truncate">
           {title}
         </p>
         {loading ? (
           <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700 sm:h-9" />
         ) : (
-          <p className={`text-2xl sm:text-3xl font-extrabold ${color} truncate tabular-nums`}>
+          <p className={`text-3xl sm:text-4xl font-extrabold ${color} truncate tabular-nums`}>
             {value}
           </p>
         )}

@@ -257,6 +257,74 @@ export interface TimetableSnapshot {
   lastUpdatedBy: string;
 }
 
+export interface TrainingDashboardStats {
+  fiscalYear: string;
+  totalTrainingDays: number;
+  totalSessions: number;
+  totalAttendees: number;
+  totalHours: number;
+
+  programDays: {
+    program: string;
+    totalDays: number;
+    sessionCount: number;
+    attendeesCount: number;
+    totalHours: number;
+  }[];
+
+  monthlyActivity: {
+    month: string;
+    monthIndex: number;
+    sessions: number;
+    days: number;
+    attendees: number;
+    hours: number;
+  }[];
+
+  dailyActivity: {
+    date: string;
+    sessions: number;
+    days: number;
+    attendees: number;
+    hours: number;
+  }[];
+
+  modeBreakdown: {
+    online: number;
+    offline: number;
+    onlinePct: number;
+    offlinePct: number;
+  };
+
+  topInstructors: {
+    name: string;
+    sessions: number;
+    totalHours: number;
+    totalAttendees: number;
+  }[];
+
+  typeBreakdown: {
+    type: string;
+    count: number;
+    pct: number;
+  }[];
+
+  warningStats: {
+    total: number;
+    warning1: number;
+    warning2: number;
+    blacklistedThisMonth: number;
+    clearedThisMonth: number;
+  };
+
+  attendanceRate: {
+    month: string;
+    registered: number;
+    attended: number;
+    rate: number;
+  }[];
+}
+
 export interface ImportResult {
   success: boolean;
   imported: number;
@@ -423,4 +491,7 @@ export const hoursAPI = {
       params: { fiscalYear: fy },
       responseType: "blob"
     }),
+
+  getDashboardStats: (fiscalYear?: string, quarter?: string) =>
+    api.get<TrainingDashboardStats>(`/hours/dashboard-stats`, { params: { fiscalYear, quarter } }),
 };
