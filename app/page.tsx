@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { getBlacklist, BlacklistEntry } from "@/lib/blacklist";
-import { dashboardAPI, ChartDataBucket, hoursAPI, TrainingDashboardStats } from "@/lib/api";
+import { BlacklistEntry } from "@/lib/blacklist";
+import api, { ChartDataBucket, hoursAPI, TrainingDashboardStats, createCancelToken } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LineChart,
@@ -268,38 +268,34 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rawEntries, statsResponse] = await Promise.all([
-          getBlacklist(),
-          dashboardAPI.getStats("monthly")
-        ]);
-
-        const sortedData = rawEntries.sort(
-          (a, b) => new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime()
-        );
-        setData(sortedData);
-
-        // Compute general metrics
-        setTotalCount(sortedData.length);
-        setWarningsCount(sortedData.filter(e => e.status === "warning").length);
+        // PERF: Unified API call fetching everything in one round-trip (with cache buster for PWA)
+        const { signal } = createCancelToken();
+        const { data: statsResponse } = await api.get(`/dashboard/stats?range=monthly&_t=${Date.now()}`, { signal });
         
-        const now = new Date();
-        const thisMonth = now.getMonth();
-        const thisYear = now.getFullYear();
+        if (statsResponse.success) {
+          console.log("DASHBOARD STATS RESPONSE:", statsResponse);
+          setChartData(statsResponse.data);
+          
+          const sortedData = statsResponse.blacklist || [];
+          setData(sortedData);
 
-        setThisMonthCount(sortedData.filter((entry) => {
-          const d = new Date(entry.addedAt);
-          return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-        }).length);
+          setTotalCount(statsResponse.users?.total || 0);
+          setWarningsCount(sortedData.filter((e: BlacklistEntry) => e.status === "warning").length);
+          
+          const now = new Date();
+          const thisMonth = now.getMonth();
+          const thisYear = now.getFullYear();
 
-        if (statsResponse.data.success) {
-          setChartData(statsResponse.data.data);
+          setThisMonthCount(sortedData.filter((entry: BlacklistEntry) => {
+            const d = new Date(entry.addedAt);
+            return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+          }).length);
+
+          const initialFiltered = filterEntriesByTimeRange(sortedData, "monthly");
+          setTracksData(buildTracksChartData(initialFiltered));
+          setWarningsTrackData(buildTracksChartData(initialFiltered.filter((e: BlacklistEntry) => e.status === "warning")));
+          setBlacklistTrackData(buildTracksChartData(initialFiltered.filter((e: BlacklistEntry) => e.status === "blacklisted")));
         }
-        
-        // Use the initial "monthly" timeRange to filter tracks
-        const initialFiltered = filterEntriesByTimeRange(sortedData, "monthly");
-        setTracksData(buildTracksChartData(initialFiltered));
-        setWarningsTrackData(buildTracksChartData(initialFiltered.filter(e => e.status === "warning")));
-        setBlacklistTrackData(buildTracksChartData(initialFiltered.filter(e => e.status === "blacklisted")));
       } catch (err) {
         console.error(err);
       } finally {
@@ -307,7 +303,10 @@ export default function Dashboard() {
       }
     };
 
+    const { cancel } = createCancelToken();
     fetchData();
+    
+    return () => cancel();
   }, []);
 
   // ━━━ ADDED: Fetch Fiscal Years & Default Selection ━━━
@@ -346,9 +345,10 @@ export default function Dashboard() {
   const handleRangeChange = async (range: TimeRange) => {
     setTimeRange(range);
     try {
-      const statsResponse = await dashboardAPI.getStats(range);
-      if (statsResponse.data.success) {
-        setChartData(statsResponse.data.data);
+      // PERF: Update just the chart data (with cache buster)
+      const { data: statsResponse } = await api.get(`/dashboard/stats?range=${range}&_t=${Date.now()}`);
+      if (statsResponse.success) {
+        setChartData(statsResponse.data);
       }
     } catch (err) {
       console.error(err);
@@ -919,7 +919,7 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {recentEntries.map((person) => (
-                  <tr key={person.id} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <tr key={person._id || person.nationalId} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{person.name}</td>
                     <td className="px-6 py-4 font-mono text-gray-700 dark:text-gray-300">{person.nationalId}</td>
                     <td className="px-6 py-4"><span className="text-gray-600 dark:text-gray-400">{formatDate(person.addedAt)}</span></td>

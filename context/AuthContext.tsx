@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useEffect, useState } from "react";
-import { AppUser, authAPI } from "@/lib/api";
+import { authAPI, AppUser, pingServer } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Listen for global toasts (e.g. from hooks like useRequireAuth)
   useEffect(() => {
+    pingServer();
     const handleToast = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
       setToastMessage(customEvent.detail);

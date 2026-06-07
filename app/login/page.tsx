@@ -24,7 +24,6 @@ export default function LoginPage() {
       await signIn(email, password);
       router.replace("/");
     } catch (err) {
-      console.error(err);
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data?.message || "تعذّر الاتصال بالخادم");
       } else {

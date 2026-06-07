@@ -6,9 +6,13 @@ import type { NextRequest } from 'next/server';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (pathname.startsWith('/api')) {
+    console.log(`[PROXY] Intercepted API request: ${request.nextUrl.pathname}${request.nextUrl.search}`);
+    return NextResponse.next();
+  }
+
   if (
     pathname.startsWith('/login') ||
-    pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.includes('.')
   ) {
