@@ -70,9 +70,11 @@ The system is fully installable as a standalone Progressive Web App on mobile an
 - **Automatic expiry cleanup**: Expired blacklist entries are verified and cleaned when the blacklist page loads.
 - **National ID validation**: Prevents malformed IDs from being added during attendance processing, with strict regex patterns ensuring format compliance.
 
-### 🧾 Sheet Organization
+### 🧾 Sheet Organization Modules (تنظيم وفصل الشيتات)
 
-The sheet organizer restructures Google Forms-style attendance exports by grouping rows chronologically by `Timestamp` date, followed by `Workshop Name`. The underlying engine uses `xlsx-js-style` to inject rich styling—such as solid black separator rows—directly into the exported workbook while preserving original columns.
+The system offers two specialized engines to restructure raw Google Forms attendance exports:
+- **Client-Side Organizer (تنظيم شيت الحضور):** Completely processes the Excel file in the browser using `SheetJS` and `xlsx-js-style`. It groups rows chronologically by `Timestamp` and `Workshop Name`, injecting solid black separator rows directly into the exported workbook while preserving all original columns.
+- **Backend Attendance Separator (فصل شيت الحضور):** Securely uploads the raw file to the backend API which dynamically reconstructs it into a polished, multi-sheet Excel workbook—grouping trainees by Workshop Name into separate tabs, applying yellow session headers, and padding sessions to ensure uniform printable areas. The frontend then automatically downloads the styled file.
 
 ### 📜 Certificate Engine
 
