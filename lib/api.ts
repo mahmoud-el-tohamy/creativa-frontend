@@ -495,3 +495,25 @@ export const hoursAPI = {
   getDashboardStats: (fiscalYear?: string, quarter?: string) =>
     api.get<TrainingDashboardStats>(`/hours/dashboard-stats`, { params: { fiscalYear, quarter } }),
 };
+
+export const attendanceSheetAPI = {
+  build: async (file: File): Promise<{
+    blob: Blob;
+    stats: { workshops: number; sessions: number; totalRows: number };
+  }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const response = await api.post("/attendance-sheet/build", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      responseType: "blob",
+    });
+    return {
+      blob: response.data,
+      stats: {
+        workshops: Number(response.headers["x-stats-workshops"]),
+        sessions: Number(response.headers["x-stats-sessions"]),
+        totalRows: Number(response.headers["x-stats-total-rows"]),
+      },
+    };
+  },
+};

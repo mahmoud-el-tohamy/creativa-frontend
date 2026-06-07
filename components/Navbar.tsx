@@ -23,6 +23,7 @@ const BASE_LINKS_ALL: NavLink[] = [
   { href: "/",            label: "الرئيسية" },
   { href: "/attendance",  label: "رصد الحضور" },
   { href: "/multi-day-attendance", label: "الحضور متعدد الأيام" },
+  { href: "/attendance-sheet", label: "شيت الحضور المنظم" },
   { href: "/filter",      label: "فلترة القوائم" },
   { href: "/organize",    label: "تنظيم الشيت" },
   { href: "/hours",       label: "متابعة الساعات" },
@@ -122,6 +123,7 @@ export default function Navbar() {
           links: [
             { href: "/attendance", label: "رصد الحضور" },
             { href: "/multi-day-attendance", label: "متعدد الأيام" },
+            { href: "/attendance-sheet", label: "شيت الحضور المنظم" },
           ],
         },
         { type: "link" as const, href: "/filter", label: "الفلترة" },

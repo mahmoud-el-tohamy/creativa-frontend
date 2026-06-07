@@ -31,6 +31,7 @@ const ACTION_META: Record<string, { label: string; color: string }> = {
   training_session_delete: { label: "حذف تدريب", color: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
   training_session_import: { label: "استيراد تدريبات", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
   timetable_rebuild: { label: "إعادة بناء التايم تيبول", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
+  attendance_sheet_build: { label: "بناء شيت الحضور", color: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
 };
 
 const ACTION_FILTER_OPTIONS = [
@@ -51,6 +52,7 @@ const ACTION_FILTER_OPTIONS = [
   { value: "training_session_delete", label: "حذف تدريب" },
   { value: "training_session_import", label: "استيراد تدريبات" },
   { value: "timetable_rebuild", label: "إعادة بناء التايم تيبول" },
+  { value: "attendance_sheet_build", label: "بناء شيت الحضور" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
