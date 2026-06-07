@@ -153,10 +153,10 @@ export interface TrainingSession {
   date: string;
   hours: number;
   mode: "online" | "offline";
-  instructorId: string;
+  instructorId: string | null; // FIXED: FIX 3 — optional
   instructorName: string;
   attendeesCount: number;
-  type: "Training" | "Awareness Event";
+  type: "Training" | "Awareness Event" | "Incubation" | "Consultation";
   evaluationReportUrl: string;
   trainingReportUrl: string;
   dayValue: number;
@@ -173,10 +173,10 @@ export interface TrainingSessionPayload {
   date: string;
   hours: number;
   mode: "online" | "offline";
-  instructorId: string;
+  instructorId: string; // empty string means no instructor selected
   instructorName: string;
   attendeesCount: number;
-  type: "Training" | "Awareness Event";
+  type: "Training" | "Awareness Event" | "Incubation" | "Consultation";
   evaluationReportUrl?: string;
   trainingReportUrl?: string;
 }

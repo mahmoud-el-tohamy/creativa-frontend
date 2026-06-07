@@ -27,12 +27,12 @@ import axios from "axios";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// FIXED: FIX 1 — fiscal year starts May 1, not May 25
 function getCurrentFiscalYear(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth(); // 0-indexed
-  const day = now.getDate();
-  if (month > 4 || (month === 4 && day >= 25)) {
+  if (month >= 4) {
     return `FY${year}-${year + 1}`;
   }
   return `FY${year - 1}-${year}`;
@@ -76,7 +76,7 @@ const TIMETABLE_PROGRAMS: TimetableProgram[] = [
   "Career development",
 ];
 
-const PROGRAM_COLORS: Record<ProgramName, string> = {
+const PROGRAM_COLORS: Record<string, string> = {
   "Career Development": "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
   "Tech": "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
   "Freelancing": "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
@@ -86,13 +86,33 @@ const PROGRAM_COLORS: Record<ProgramName, string> = {
   "Acceleration program": "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
 };
 
-const TIMETABLE_PROGRAM_COLORS: Record<TimetableProgram, string> = {
+const TIMETABLE_PROGRAM_COLORS: Record<string, string> = {
   "Entrepreneurship / Technology transfer": "#D9EAD3",
   "Awareness events": "#FCE5CD",
   "Acceleration program": "#CFE2F3",
   "Freelancing coaches": "#FFF2CC",
   "Hackathons / Competitions": "#EAD1DC",
   "Career development": "#D0E0E3",
+};
+
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case "Training": return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+    case "Awareness Event": return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+    case "Incubation": return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
+    case "Consultation": return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300";
+    default: return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+  }
+};
+
+const getTypeLabel = (type: string) => {
+  switch (type) {
+    case "Training": return "تدريب";
+    case "Awareness Event": return "توعوية";
+    case "Incubation": return "احتضان";
+    case "Consultation": return "استشارة";
+    default: return type;
+  }
 };
 
 // ─── State Types ──────────────────────────────────────────────────────────────
@@ -256,7 +276,7 @@ function SessionModal({
           date: editing.date.split("T")[0],
           hours: editing.hours,
           mode: editing.mode,
-          instructorId: editing.instructorId,
+          instructorId: editing.instructorId ?? "", // FIXED: FIX 3 — null → ""
           instructorName: editing.instructorName,
           attendeesCount: editing.attendeesCount,
           type: editing.type,
@@ -278,7 +298,7 @@ function SessionModal({
     if (!form.sessionName.trim()) e.sessionName = "اسم الجلسة مطلوب";
     if (!form.date) e.date = "التاريخ مطلوب";
     if (!form.hours || form.hours < 0.5 || form.hours > 24) e.hours = "يجب أن تكون الساعات بين 0.5 و 24";
-    if (!form.instructorId) e.instructorId = "اختر المدرب";
+    // FIXED: FIX 3 — instructor is now optional, removed required check
     if (!form.type) e.type = "اختر النوع";
     if (form.evaluationReportUrl && !/^https?:\/\/.+/.test(form.evaluationReportUrl)) e.evaluationReportUrl = "رابط غير صالح";
     if (form.trainingReportUrl && !/^https?:\/\/.+/.test(form.trainingReportUrl)) e.trainingReportUrl = "رابط غير صالح";
@@ -323,12 +343,13 @@ function SessionModal({
   };
 
   const instructorOptions = useMemo(() => [
+    { value: "", label: "لا مدرب" },
     ...instructors.map((i) => ({ value: i._id, label: i.name })),
     { value: "__add__", label: "+ إضافة مدرب جديد" },
   ], [instructors]);
 
-  const dayValueBadge = form.hours <= 4 ? "نصف يوم (0.5)" : "يوم كامل (1.0)";
-  const dayValueColor = form.hours <= 4
+  const dayValueBadge = form.hours < 5 ? "نصف يوم (0.5)" : "يوم كامل (1.0)";
+  const dayValueColor = form.hours < 5
     ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
     : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
 
@@ -372,8 +393,10 @@ function SessionModal({
                 options={[
                   { value: "Training", label: "تدريب" },
                   { value: "Awareness Event", label: "فعالية توعوية" },
+                  { value: "Incubation", label: "احتضان" },
+                  { value: "Consultation", label: "استشارة" },
                 ]}
-                onChange={(v) => setForm((f) => ({ ...f, type: v as "Training" | "Awareness Event" }))}
+                onChange={(v) => setForm((f) => ({ ...f, type: v as "Training" | "Awareness Event" | "Incubation" | "Consultation" }))}
               />
               {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
             </div>
@@ -414,7 +437,7 @@ function SessionModal({
                 value={form.hours}
                 min={0.5}
                 max={24}
-                step={0.5}
+                step="any"
                 onChange={(e) => setForm((f) => ({ ...f, hours: parseFloat(e.target.value) || 0 }))}
                 className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -455,9 +478,9 @@ function SessionModal({
             </div>
           </div>
 
-          {/* Instructor */}
+            {/* Instructor — FIXED: FIX 3 — optional field */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">المدرب *</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">المدرب (اختياري)</label>
           <CustomSelect
               value={form.instructorId}
               options={instructorOptions}
@@ -1017,15 +1040,14 @@ function SessionsTab({ state, dispatch, onEdit, onDelete, showToast, onImport, s
                         {s.mode === "online" ? "أونلاين" : "أوفلاين"}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 whitespace-nowrap">{s.instructorName}</td>
+                    <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      {/* FIXED: FIX 3 — show dash when no instructor */}
+                      {s.instructorName || "—"}
+                    </td>
                     <td className="px-3 py-2.5 text-center text-gray-600 dark:text-gray-400">{s.attendeesCount}</td>
                     <td className="px-3 py-2.5 text-center">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                        s.type === "Training"
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                      }`}>
-                        {s.type === "Training" ? "تدريب" : "توعوية"}
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getTypeColor(s.type)}`}>
+                        {getTypeLabel(s.type)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-center">
