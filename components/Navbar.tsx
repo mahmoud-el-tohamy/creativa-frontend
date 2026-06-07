@@ -23,8 +23,9 @@ const BASE_LINKS_ALL: NavLink[] = [
   { href: "/",            label: "الرئيسية" },
   { href: "/attendance",  label: "رصد الحضور" },
   { href: "/multi-day-attendance", label: "الحضور متعدد الأيام" },
+  { href: "/attendance-sheet", label: "فصل شيت الحضور" },
   { href: "/filter",      label: "فلترة القوائم" },
-  { href: "/organize",    label: "تنظيم الشيت" },
+  { href: "/organize",    label: "تنظيم شيت الحضور" },
   { href: "/hours",       label: "متابعة الساعات" },
   { href: "/certificates",label: "الشهادات" },
   { href: "/blacklist",   label: "البلاك ليست" },
@@ -57,7 +58,7 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const [openDesktopDropdown, setOpenDesktopDropdown] = useState<"attendance" | "admin" | null>(null);
+  const [openDesktopDropdown, setOpenDesktopDropdown] = useState<"attendance" | "sheets" | "admin" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const desktopNavRef = useRef<HTMLDivElement>(null);
@@ -124,8 +125,16 @@ export default function Navbar() {
             { href: "/multi-day-attendance", label: "متعدد الأيام" },
           ],
         },
+        {
+          type: "group" as const,
+          key: "sheets" as const,
+          label: "تنظيم الشيتات",
+          links: [
+            { href: "/organize", label: "تنظيم شيت الحضور" },
+            { href: "/attendance-sheet", label: "فصل شيت الحضور" },
+          ],
+        },
         { type: "link" as const, href: "/filter", label: "الفلترة" },
-        { type: "link" as const, href: "/organize", label: "تنظيم الشيت" },
         { type: "link" as const, href: "/hours", label: "متابعة الساعات" },
         { type: "link" as const, href: "/certificates", label: "الشهادات" },
         { type: "link" as const, href: "/blacklist", label: "البلاك ليست" },

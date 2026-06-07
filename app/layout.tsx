@@ -14,9 +14,9 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "نظام تتبع الحضور - Creativa",
+  title: "نظام إدارة العمليات والتدريب - Creativa",
   description:
-    "نظام لفلترة المسجلين والحضور وإدارة البلاك ليست لمركز إبداع مصر الرقمية بالمنصورة",
+    "نظام لإدارة العمليات و البلاك ليست لمركز إبداع مصر الرقمية بالمنصورة",
   manifest: "/manifest.json",
 };
 

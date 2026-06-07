@@ -153,10 +153,10 @@ export interface TrainingSession {
   date: string;
   hours: number;
   mode: "online" | "offline";
-  instructorId: string;
+  instructorId: string | null; // FIXED: FIX 3 — optional
   instructorName: string;
   attendeesCount: number;
-  type: "Training" | "Awareness Event";
+  type: "Training" | "Awareness Event" | "Incubation" | "Consultation";
   evaluationReportUrl: string;
   trainingReportUrl: string;
   dayValue: number;
@@ -173,10 +173,10 @@ export interface TrainingSessionPayload {
   date: string;
   hours: number;
   mode: "online" | "offline";
-  instructorId: string;
+  instructorId: string; // empty string means no instructor selected
   instructorName: string;
   attendeesCount: number;
-  type: "Training" | "Awareness Event";
+  type: "Training" | "Awareness Event" | "Incubation" | "Consultation";
   evaluationReportUrl?: string;
   trainingReportUrl?: string;
 }
@@ -255,6 +255,74 @@ export interface TimetableSnapshot {
   sessionCount: number;
   lastUpdated: string;
   lastUpdatedBy: string;
+}
+
+export interface TrainingDashboardStats {
+  fiscalYear: string;
+  totalTrainingDays: number;
+  totalSessions: number;
+  totalAttendees: number;
+  totalHours: number;
+
+  programDays: {
+    program: string;
+    totalDays: number;
+    sessionCount: number;
+    attendeesCount: number;
+    totalHours: number;
+  }[];
+
+  monthlyActivity: {
+    month: string;
+    monthIndex: number;
+    sessions: number;
+    days: number;
+    attendees: number;
+    hours: number;
+  }[];
+
+  dailyActivity: {
+    date: string;
+    sessions: number;
+    days: number;
+    attendees: number;
+    hours: number;
+  }[];
+
+  modeBreakdown: {
+    online: number;
+    offline: number;
+    onlinePct: number;
+    offlinePct: number;
+  };
+
+  topInstructors: {
+    name: string;
+    sessions: number;
+    totalHours: number;
+    totalAttendees: number;
+  }[];
+
+  typeBreakdown: {
+    type: string;
+    count: number;
+    pct: number;
+  }[];
+
+  warningStats: {
+    total: number;
+    warning1: number;
+    warning2: number;
+    blacklistedThisMonth: number;
+    clearedThisMonth: number;
+  };
+
+  attendanceRate: {
+    month: string;
+    registered: number;
+    attended: number;
+    rate: number;
+  }[];
 }
 
 export interface ImportResult {
@@ -423,4 +491,29 @@ export const hoursAPI = {
       params: { fiscalYear: fy },
       responseType: "blob"
     }),
+
+  getDashboardStats: (fiscalYear?: string, quarter?: string) =>
+    api.get<TrainingDashboardStats>(`/hours/dashboard-stats`, { params: { fiscalYear, quarter } }),
+};
+
+export const attendanceSheetAPI = {
+  build: async (file: File): Promise<{
+    blob: Blob;
+    stats: { workshops: number; sessions: number; totalRows: number };
+  }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const response = await api.post("/attendance-sheet/build", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      responseType: "blob",
+    });
+    return {
+      blob: response.data,
+      stats: {
+        workshops: Number(response.headers["x-stats-workshops"]),
+        sessions: Number(response.headers["x-stats-sessions"]),
+        totalRows: Number(response.headers["x-stats-total-rows"]),
+      },
+    };
+  },
 };
