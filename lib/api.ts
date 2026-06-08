@@ -536,3 +536,33 @@ export const attendanceSheetAPI = {
     };
   },
 };
+
+// ─── Planned Timetable API ────────────────────────────────────────────────────
+
+import type {
+  PlannedTimetableResponse,
+  PlannedData,
+  CellUpdatePayload,
+  TimetableComparison,
+} from "@/lib/types/planned";
+
+export const plannedAPI = {
+  get: (fy: string) =>
+    api.get<{ success: boolean; data: PlannedTimetableResponse; exists: boolean }>(`/planned/${fy}`),
+
+  upsert: (fy: string, data: PlannedData) =>
+    api.put<{ success: boolean; data: PlannedTimetableResponse }>(`/planned/${fy}`, { data }),
+
+  updateCell: (fy: string, payload: CellUpdatePayload) =>
+    api.patch<{ success: boolean; data: PlannedTimetableResponse }>(`/planned/${fy}/cell`, payload),
+
+  getComparison: (fy: string) =>
+    api.get<{ success: boolean; data: TimetableComparison }>(`/planned/${fy}/comparison`),
+
+  export: (fy: string) =>
+    api.get(`/planned/${fy}/export`, { responseType: "blob" }),
+
+  listYears: () =>
+    api.get<{ success: boolean; data: string[] }>("/planned"),
+};
+
