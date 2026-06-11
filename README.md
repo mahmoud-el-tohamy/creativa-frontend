@@ -60,7 +60,9 @@ The system is fully installable as a standalone Progressive Web App on mobile an
 - **Session Management**: Log training sessions, modes (online/offline), hours, attendee counts, and evaluation links.
 - **Bulk Excel Import**: Effortlessly import multiple sessions via Excel sheets with built-in deduplication.
 - **Dynamic Timetables**: Automatically generates comprehensive visual timetables mapped against customizable fiscal years.
-- **Advanced Exporting**: Export detailed tracking logs or structured timetable spreadsheets with a single click.
+- **Planned Timetable Dashboard**: Create and update the expected hours plan for the whole year across all programs.
+- **Comparison Analytics**: Visual comparison bar chart and heatmaps that dynamically track actual progress versus the planned timetable.
+- **Advanced Exporting**: Export detailed tracking logs, structured timetable spreadsheets, or comparison reports with a single click.
 
 ### 🚫 Blacklist & Candidate Filtering
 
@@ -186,6 +188,7 @@ Most operational workflows are intentionally client-heavy. Excel parsing, list c
 | Edit/Modify Blacklist | ✅ | ✅ | ❌ |
 | Attendance Processing | ✅ | ✅ | ❌ |
 | Multi-Day Attendance | ✅ | ✅ | ❌ |
+| Planned Timetable Edit | ✅ | ✅ | ❌ |
 | Candidate Filtering | ✅ | ✅ | ❌ |
 | Sheet Organization | ✅ | ✅ | ❌ |
 | Certificate Generation | ✅ | ✅ | ❌ |

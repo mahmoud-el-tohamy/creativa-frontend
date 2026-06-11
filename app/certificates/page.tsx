@@ -6,11 +6,24 @@ import jsPDF from "jspdf";
 import JSZip from "jszip";
 import RouteGuard from "@/components/RouteGuard";
 
+const FONTS = [
+  { id: "cormorant", name: "Cormorant Garamond (كلاسيك إنجليزي)", family: "'Cormorant Garamond', serif", url: "Cormorant+Garamond:wght@600" },
+  { id: "cairo", name: "Cairo (خط كايرو)", family: "'Cairo', sans-serif", url: "Cairo:wght@600" },
+  { id: "amiri", name: "Amiri (خط أميري)", family: "'Amiri', serif", url: "Amiri:wght@600" },
+  { id: "tajawal", name: "Tajawal (خط تجول)", family: "'Tajawal', sans-serif", url: "Tajawal:wght@600" },
+  { id: "alexandria", name: "Alexandria (خط الإسكندرية)", family: "'Alexandria', sans-serif", url: "Alexandria:wght@600" },
+  { id: "playfair", name: "Playfair Display (فخم إنجليزي)", family: "'Playfair Display', serif", url: "Playfair+Display:wght@600" },
+  { id: "inter", name: "Inter (حديث إنجليزي)", family: "'Inter', sans-serif", url: "Inter:wght@600" }
+];
+
 export default function CertificatesPage() {
   const [templateSrc, setTemplateSrc] = useState<string | null>(null);
   const [names, setNames] = useState<string[]>([]);
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const [fontSize, setFontSize] = useState(48);
+  const [selectedFontId, setSelectedFontId] = useState("cormorant");
+
+  const selectedFont = FONTS.find(f => f.id === selectedFontId) || FONTS[0];
   
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -21,10 +34,11 @@ export default function CertificatesPage() {
   const [progress, setProgress] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Load the exact font needed by the canvas
+  // Load the fonts needed by the canvas
   useEffect(() => {
     const link = document.createElement("link");
-    link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap";
+    const fontQuery = FONTS.map(f => f.url).join("&family=");
+    link.href = `https://fonts.googleapis.com/css2?family=${fontQuery}&display=swap`;
     link.rel = "stylesheet";
     document.head.appendChild(link);
     return () => { document.head.removeChild(link); };
@@ -164,7 +178,7 @@ export default function CertificatesPage() {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         // Render Text
-        ctx.font = `600 ${fontSize}px "Cormorant Garamond", serif`;
+        ctx.font = `600 ${fontSize}px ${selectedFont.family}`;
         ctx.fillStyle = "#1a1a1a";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -286,11 +300,42 @@ export default function CertificatesPage() {
                 <h2 className="font-bold text-gray-800 dark:text-gray-200 mb-4">3. إعدادات النص</h2>
                 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex justify-between">
-                    <span>حجم الخط</span>
-                    <span className="font-mono bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 rounded">{fontSize}px</span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span>نوع الخط (Font Family)</span>
                   </label>
-                  <input id="certificate-font-size" name="certificateFontSize" type="range" min="12" max="120" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-full accent-blue-600" />
+                  <select
+                    id="certificate-font-family"
+                    name="certificateFontFamily"
+                    value={selectedFontId}
+                    onChange={(e) => setSelectedFontId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 dark:text-gray-200 font-sans"
+                  >
+                    {FONTS.map((font) => (
+                      <option key={font.id} value={font.id} style={{ fontFamily: font.family }}>
+                        {font.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex justify-between items-center">
+                    <span>حجم الخط</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        id="certificate-font-size-number"
+                        name="certificateFontSizeNumber"
+                        type="number"
+                        min="12"
+                        max="1000"
+                        value={fontSize}
+                        onChange={(e) => setFontSize(Math.max(12, Math.min(1000, Number(e.target.value) || 12)))}
+                        className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-center font-mono text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 dark:text-gray-200"
+                      />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">px</span>
+                    </div>
+                  </label>
+                  <input id="certificate-font-size" name="certificateFontSize" type="range" min="12" max="400" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-full accent-blue-600" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -345,7 +390,7 @@ export default function CertificatesPage() {
                         left: `${position.x}%`,
                         top: `${position.y}%`,
                         transform: `translate(-50%, -50%)`,
-                        fontFamily: "'Cormorant Garamond', serif",
+                        fontFamily: selectedFont.family,
                         fontWeight: 600,
                         color: "#1a1a1a",
                         fontSize: `${fontSize * scale}px`,
@@ -353,7 +398,7 @@ export default function CertificatesPage() {
                         lineHeight: 1
                       }}
                     >
-                      Ahmed Mohamed
+                      أحمد محمد / Ahmed Mohamed
                     </div>
                   </div>
                 ) : (
