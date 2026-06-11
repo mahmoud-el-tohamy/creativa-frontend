@@ -9,9 +9,9 @@ import { usersAPI, AppUser } from "@/lib/api";
 import CustomSelect from "@/components/ui/CustomSelect";
 import ToggleSwitch from "@/components/ui/ToggleSwitch";
 
-type UserRole = "admin" | "employee" | "viewer";
+type UserRole = "admin" | "employee" | "viewer" | "accountant";
 
-const ROLE_LABELS: Record<UserRole, string> = { admin: "مدير", employee: "موظف", viewer: "مشاهد" };
+const ROLE_LABELS: Record<UserRole, string> = { admin: "مدير", employee: "موظف", viewer: "مشاهد", accountant: "محاسب" };
 
 function formatDate(d: string | Date | undefined) {
   if (!d) return "—";
@@ -79,8 +79,8 @@ function AddUserModal({ onClose, onCreated }: AddUserModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" dir="rtl">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="bg-blue-600 px-6 py-5 text-white">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-visible">
+        <div className="bg-blue-600 px-6 py-5 text-white rounded-t-2xl">
           <h2 className="text-xl font-bold">إضافة مستخدم جديد</h2>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -110,9 +110,10 @@ function AddUserModal({ onClose, onCreated }: AddUserModalProps) {
               value={role}
               onChange={(v) => setRole(v as UserRole)}
               options={[
-                { value: "admin", label: "مدير" },
-                { value: "employee", label: "موظف" },
-                { value: "viewer",   label: "مشاهد" },
+                { value: "admin",      label: "مدير" },
+                { value: "employee",   label: "موظف" },
+                { value: "viewer",     label: "مشاهد" },
+                { value: "accountant", label: "محاسب" },
               ]}
             />
           </div>
@@ -372,9 +373,10 @@ export default function UsersPage() {
                             value={u.role}
                             onChange={(v) => handleRoleChange(u.id, v as UserRole, u.displayName)}
                             options={[
-                              { value: "admin",    label: "مدير",   color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
-                              { value: "employee", label: "موظف",   color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
-                              { value: "viewer",   label: "مشاهد", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+                              { value: "admin",      label: "مدير",   color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
+                              { value: "employee",   label: "موظف",   color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+                              { value: "viewer",     label: "مشاهد", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+                              { value: "accountant", label: "محاسب", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
                             ]}
                           />
                         </td>

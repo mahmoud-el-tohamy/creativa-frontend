@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 // This proxy protects all routes except /login.
 // We check for the refreshToken cookie because accessToken expires quickly.
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith('/api')) {
@@ -23,6 +23,19 @@ export function proxy(request: NextRequest) {
 
   if (!refreshToken) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  const userRole = request.cookies.get('user-role')?.value;
+  if (userRole === "accountant") {
+    const isAllowed =
+      pathname === "/" ||
+      pathname === "/instructors" ||
+      pathname.startsWith("/instructors/") ||
+      pathname === "/login";
+
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
   return NextResponse.next();

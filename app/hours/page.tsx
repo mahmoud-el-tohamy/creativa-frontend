@@ -2781,40 +2781,48 @@ function ArchiveTab({
 interface PlanCellProps {
   value: number;
   isInvalid: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }
 
 const PlanCell = React.memo(function PlanCell({
   value,
   isInvalid,
   onClick,
+  onContextMenu,
 }: PlanCellProps) {
   if (isInvalid) {
     return (
       <td className="border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 bg-gray-50 dark:bg-gray-800/50" />
     );
   }
-  let cellCls =
-    "text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none";
+  let cellColorCls = "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
   let label = "";
-  if (value === 0.5) {
-    cellCls +=
-      " bg-amber-100 dark:bg-amber-800/40 text-amber-800 dark:text-amber-300 font-bold hover:bg-amber-200 dark:hover:bg-amber-700/50";
-    label = "½";
-  } else if (value >= 1) {
-    cellCls +=
-      " bg-teal-100 dark:bg-teal-800/40 text-teal-800 dark:text-teal-300 font-bold hover:bg-teal-200 dark:hover:bg-teal-700/50";
-    label = "1";
-  } else {
-    cellCls +=
-      " hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
-    label = "";
+
+  if (value > 0) {
+    label = value.toString();
+    switch (value) {
+      case 0.5: cellColorCls = "bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50"; break;
+      case 1: cellColorCls = "bg-sky-100 dark:bg-sky-800/40 text-sky-800 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-700/50"; break;
+      case 1.5: cellColorCls = "bg-blue-100 dark:bg-blue-800/40 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-700/50"; break;
+      case 2: cellColorCls = "bg-teal-100 dark:bg-teal-800/40 text-teal-800 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-700/50"; break;
+      case 2.5: cellColorCls = "bg-emerald-100 dark:bg-emerald-800/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-700/50"; break;
+      case 3: cellColorCls = "bg-green-100 dark:bg-green-800/40 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-700/50"; break;
+      case 3.5: cellColorCls = "bg-lime-100 dark:bg-lime-800/40 text-lime-800 dark:text-lime-300 hover:bg-lime-200 dark:hover:bg-lime-700/50"; break;
+      case 4: cellColorCls = "bg-amber-100 dark:bg-amber-800/40 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-700/50"; break;
+      case 4.5: cellColorCls = "bg-orange-100 dark:bg-orange-800/40 text-orange-800 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-700/50"; break;
+      case 5: cellColorCls = "bg-red-100 dark:bg-red-800/40 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-700/50"; break;
+      default: cellColorCls = "bg-rose-100 dark:bg-rose-800/40 text-rose-800 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-700/50"; break;
+    }
   }
+
+  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? 'font-bold ' : ''}${cellColorCls}`;
   return (
     <td
       className={cellCls}
       onClick={onClick}
-      title={value > 0 ? `${value} يوم — انقر للتغيير` : "انقر لتعيين نصف يوم"}
+      onContextMenu={onContextMenu}
+      title={value > 0 ? `${value} يوم — كليك شمال للزيادة، يمين للنقصان` : "انقر لتعيين نصف يوم"}
     >
       {value === 0 ? (
         <span className="opacity-0 group-hover:opacity-100 text-[8px]">+</span>
@@ -2929,15 +2937,24 @@ function PlannedTab({
   }, [isDirty, localPlan, doSave]);
 
   const handleCellClick = useCallback(
-    (program: string, monthIndex: number, day: number, currentVal: number) => {
-      const next = currentVal === 0 ? 0.5 : currentVal === 0.5 ? 1 : 0;
-      dispatch({
-        type: "UPDATE_LOCAL_CELL",
-        program,
-        monthIndex,
-        day,
-        value: next,
-      });
+    (e: React.MouseEvent, program: string, monthIndex: number, day: number, currentVal: number, isRightClick: boolean) => {
+      e.preventDefault(); // Prevent context menu on right click
+      let next = currentVal;
+      if (isRightClick) {
+        next = Math.max(0, currentVal - 0.5);
+      } else {
+        next = Math.min(5, currentVal + 0.5);
+      }
+      
+      if (next !== currentVal) {
+        dispatch({
+          type: "UPDATE_LOCAL_CELL",
+          program,
+          monthIndex,
+          day,
+          value: next,
+        });
+      }
     },
     [dispatch],
   );
@@ -3010,17 +3027,6 @@ function PlannedTab({
           />
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-amber-300 dark:bg-amber-700 inline-block" />
-            نصف يوم (0.5)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-teal-400 dark:bg-teal-600 inline-block" />
-            يوم كامل (1.0)
-          </span>
-        </div>
 
         <div className="flex-1" />
 
@@ -3179,15 +3185,19 @@ function PlannedTab({
                                 String(day)
                               ] ?? 0;
                             return (
-                              <PlanCell
-                                key={day}
-                                value={val}
-                                isInvalid={isInvalid}
-                                onClick={() =>
-                                  !isInvalid &&
-                                  handleCellClick(prog, calMonth, day, val)
-                                }
-                              />
+                                <PlanCell
+                                  key={day}
+                                  value={val}
+                                  isInvalid={isInvalid}
+                                  onClick={(e) =>
+                                    !isInvalid &&
+                                    handleCellClick(e, prog, calMonth, day, val, false)
+                                  }
+                                  onContextMenu={(e) =>
+                                    !isInvalid &&
+                                    handleCellClick(e, prog, calMonth, day, val, true)
+                                  }
+                                />
                             );
                           })}
                           <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40 text-[10px]">

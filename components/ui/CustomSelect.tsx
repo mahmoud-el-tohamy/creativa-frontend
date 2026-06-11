@@ -10,9 +10,10 @@ export interface SelectOption {
 }
 
 interface CustomSelectProps {
-  value: string;
+  value: string | string[];
   options: SelectOption[];
-  onChange: (value: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onChange: (value: any) => void;
   /** Extra classes on the trigger button */
   className?: string;
   /** Render the trigger as a small colored badge (for role cells in tables) */
@@ -22,6 +23,8 @@ interface CustomSelectProps {
   ariaLabel?: string;
   /** Enables an internal search input to filter options */
   searchable?: boolean;
+  /** Enables multiple selection */
+  multiple?: boolean;
 }
 
 export default function CustomSelect({
@@ -34,13 +37,22 @@ export default function CustomSelect({
   id,
   ariaLabel,
   searchable = false,
+  multiple = false,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = options.find((o) => o.value === value) ?? options[0];
+  const selectedItems = multiple 
+    ? options.filter((o) => (value as string[]).includes(o.value))
+    : options.filter((o) => o.value === value);
+    
+  const displayLabel = multiple
+    ? (selectedItems.length > 0 ? selectedItems.map(o => o.label).join(", ") : "اختر...")
+    : (selectedItems[0]?.label ?? options[0]?.label ?? "اختر...");
+    
+  const selected = selectedItems[0] ?? options[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -70,12 +82,14 @@ export default function CustomSelect({
     return (
       <div ref={ref} className="relative inline-block">
         <button
+          type="button"
           id={id}
           aria-label={ariaLabel}
           aria-haspopup="listbox"
           aria-expanded={open}
           disabled={disabled}
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
             if (!open && searchable) setSearch("");
             setOpen((o) => !o);
           }}
@@ -100,14 +114,33 @@ export default function CustomSelect({
           >
             {options.map((o) => (
               <button
+                type="button"
                 key={o.value}
-                onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full text-right px-4 py-2.5 text-xs font-semibold transition-colors
+                onClick={(e) => { 
+                  e.preventDefault();
+                  if (multiple) {
+                    const currentValues = (value as string[]) || [];
+                    if (currentValues.includes(o.value)) {
+                      onChange(currentValues.filter(v => v !== o.value));
+                    } else {
+                      onChange([...currentValues, o.value]);
+                    }
+                  } else {
+                    onChange(o.value); 
+                    setOpen(false); 
+                  }
+                }}
+                className={`w-full text-right px-4 py-2.5 text-xs font-semibold transition-colors flex justify-between items-center
                   hover:bg-gray-50 dark:hover:bg-gray-700
-                  ${o.value === value ? "bg-gray-50 dark:bg-gray-700" : ""}
+                  ${multiple ? ((value as string[]).includes(o.value) ? "bg-gray-50 dark:bg-gray-700" : "") : (o.value === value ? "bg-gray-50 dark:bg-gray-700" : "")}
                   ${o.color ? o.color : "text-gray-700 dark:text-gray-200"}`}
               >
-                {o.label}
+                <span>{o.label}</span>
+                {multiple && (value as string[]).includes(o.value) && (
+                  <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </button>
             ))}
           </div>
@@ -120,12 +153,14 @@ export default function CustomSelect({
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
+        type="button"
         id={id}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault();
           if (!open && searchable) setSearch("");
           setOpen((o) => !o);
         }}
@@ -138,7 +173,7 @@ export default function CustomSelect({
           focus:outline-none focus:ring-2 focus:ring-blue-500
           transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span className="truncate">{selected.label}</span>
+        <span className="truncate">{displayLabel}</span>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -168,16 +203,35 @@ export default function CustomSelect({
           <div className="overflow-y-auto overflow-x-hidden custom-scrollbar">
             {filteredOptions.length > 0 ? filteredOptions.map((o) => (
               <button
+                type="button"
                 key={o.value}
-                onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full text-right px-4 py-2.5 text-sm transition-colors break-words whitespace-normal
+                onClick={(e) => { 
+                  e.preventDefault();
+                  if (multiple) {
+                    const currentValues = (value as string[]) || [];
+                    if (currentValues.includes(o.value)) {
+                      onChange(currentValues.filter(v => v !== o.value));
+                    } else {
+                      onChange([...currentValues, o.value]);
+                    }
+                  } else {
+                    onChange(o.value); 
+                    setOpen(false); 
+                  }
+                }}
+                className={`w-full text-right px-4 py-2.5 text-sm transition-colors break-words whitespace-normal flex justify-between items-center
                   hover:bg-blue-50 dark:hover:bg-gray-700
-                  ${o.value === value
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
-                    : "text-gray-700 dark:text-gray-200 font-medium"
+                  ${multiple 
+                    ? ((value as string[]).includes(o.value) ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold" : "text-gray-700 dark:text-gray-200 font-medium")
+                    : (o.value === value ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold" : "text-gray-700 dark:text-gray-200 font-medium")
                   }`}
               >
-                {o.label}
+                <span>{o.label}</span>
+                {multiple && (value as string[]).includes(o.value) && (
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </button>
             )) : (
               <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">لا توجد نتائج</div>
