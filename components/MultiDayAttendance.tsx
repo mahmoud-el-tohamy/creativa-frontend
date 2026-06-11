@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import useSWR from "swr";
 import RouteGuard from "@/components/RouteGuard";
-import { addManyToBlacklist, getBlacklistIds } from "@/lib/blacklist";
+import { addManyToBlacklist, getBlacklistIds, bulkCheckBlacklist } from "@/lib/blacklist";
 import { getTracks, addTrack, removeTrack, Track } from "@/lib/tracks";
 import {
   downloadStyledExcel,
@@ -11,6 +11,7 @@ import {
   MultiDayAttendanceSummaryRow,
   readMultiDayAttendanceExcel,
 } from "@/lib/excel";
+import ReviewWarningsModal from "@/components/shared/ReviewWarningsModal";
 
 interface ProcessingResult {
   totalRows: number;
@@ -21,6 +22,16 @@ interface ProcessingResult {
   addedCount: number;
   clearedCount: number;
   upgradedCount: number;
+  invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[];
+  skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[];
+}
+
+interface IntermediateMultiDayData {
+  totalRows: number;
+  uniquePeopleCount: number;
+  passedList: MultiDayAttendanceSummaryRow[];
+  newBlacklistEntriesUI: MultiDayAttendanceSummaryRow[];
+  totalFailedCount: number;
   invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[];
   skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[];
 }
@@ -47,6 +58,11 @@ export default function MultiDayAttendance() {
     type: "success" | "error";
   } | null>(null);
   const [result, setResult] = useState<ProcessingResult | null>(null);
+
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewTargetedAttendees, setReviewTargetedAttendees] = useState<MultiDayAttendanceSummaryRow[]>([]);
+  const [reviewBulkResults, setReviewBulkResults] = useState<Record<string, { status: string; warningsCount: number }>>({});
+  const [intermediateProcessData, setIntermediateProcessData] = useState<IntermediateMultiDayData | null>(null);
 
   const [selectedTrack, setSelectedTrack] = useState<string>("غير محدد");
   const [isManageTracksModalOpen, setIsManageTracksModalOpen] = useState(false);
@@ -186,13 +202,62 @@ export default function MultiDayAttendance() {
         }
       });
 
+      const intermediateData = {
+        totalRows: parsedRows.length,
+        uniquePeopleCount: summaryRows.length,
+        passedList,
+        newBlacklistEntriesUI,
+        totalFailedCount: failedList.length,
+        invalidBlacklistEntries,
+        skippedExistingBlacklistEntries,
+      };
+
+      if (validFailedListToBackend.length > 0 || passedList.length > 0) {
+        if (validFailedListToBackend.length > 0) {
+          const bulkResults = await bulkCheckBlacklist(validFailedListToBackend.map(p => p.nationalId));
+          setReviewTargetedAttendees(validFailedListToBackend);
+          setReviewBulkResults(bulkResults);
+          setIntermediateProcessData(intermediateData);
+          setIsReviewModalOpen(true);
+          setIsProcessing(false);
+          return; // Wait for modal confirmation
+        } else {
+          // No one to warn, but we have attendees to clear
+          await finalizeProcess([], passedList, intermediateData);
+        }
+      } else {
+        const processingResult: ProcessingResult = {
+          ...intermediateData,
+          failedList: newBlacklistEntriesUI,
+          addedCount: 0,
+          clearedCount: 0,
+          upgradedCount: 0,
+        };
+        setResult(processingResult);
+        showToast("تمت المعالجة: لا يوجد سجلات للإضافة.", "success");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("حدث خطأ أثناء معالجة الملف أو تحديث البلاك ليست.", "error");
+    } finally {
+      if (!isReviewModalOpen) setIsProcessing(false);
+    }
+  };
+
+  const finalizeProcess = async (
+    selectedValidFailedList: typeof reviewTargetedAttendees, 
+    passedList: typeof reviewTargetedAttendees, 
+    data: IntermediateMultiDayData
+  ) => {
+    setIsProcessing(true);
+    try {
       let added = 0;
       let cleared = 0;
       let upgraded = 0;
 
-      if (validFailedListToBackend.length > 0 || passedList.length > 0) {
+      if (selectedValidFailedList.length > 0 || passedList.length > 0) {
         const res = await addManyToBlacklist(
-          validFailedListToBackend.map((person) => ({
+          selectedValidFailedList.map((person) => ({
             name: person.name,
             nationalId: person.nationalId,
           })),
@@ -205,31 +270,37 @@ export default function MultiDayAttendance() {
       }
 
       const processingResult: ProcessingResult = {
-        totalRows: parsedRows.length,
-        uniquePeopleCount: summaryRows.length,
-        passedList,
-        failedList: newBlacklistEntriesUI,
-        totalFailedCount: failedList.length,
+        totalRows: data.totalRows,
+        uniquePeopleCount: data.uniquePeopleCount,
+        passedList: data.passedList,
+        failedList: data.newBlacklistEntriesUI,
+        totalFailedCount: data.totalFailedCount,
         addedCount: added,
         clearedCount: cleared,
         upgradedCount: upgraded,
-        invalidBlacklistEntries,
-        skippedExistingBlacklistEntries,
+        invalidBlacklistEntries: data.invalidBlacklistEntries,
+        skippedExistingBlacklistEntries: data.skippedExistingBlacklistEntries,
       };
 
       setResult(processingResult);
 
-
       showToast(
-        `تمت المعالجة: نجاح ${passedList.length}، إضافة ${added} إنذارات جديدة و ${upgraded} للقائمة السوداء`,
+        `تمت المعالجة: نجاح ${data.passedList.length}، إضافة ${added} إنذارات جديدة و ${upgraded} للقائمة السوداء`,
         "success",
       );
     } catch (error) {
       console.error(error);
-      showToast("حدث خطأ أثناء معالجة الملف أو تحديث البلاك ليست.", "error");
+      showToast("حدث خطأ أثناء تحديث البلاك ليست.", "error");
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleConfirmMultiDayWarnings = async (selectedIds: string[]) => {
+    if (!intermediateProcessData) return;
+    setIsReviewModalOpen(false);
+    const selectedValidFailedList = reviewTargetedAttendees.filter(p => selectedIds.includes(p.nationalId));
+    await finalizeProcess(selectedValidFailedList, intermediateProcessData.passedList, intermediateProcessData);
   };
 
   const handleDownloadPassed = () => {
@@ -285,6 +356,15 @@ export default function MultiDayAttendance() {
             {toast.message}
           </div>
         )}
+
+        <ReviewWarningsModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          onConfirm={handleConfirmMultiDayWarnings}
+          targetedAttendees={reviewTargetedAttendees}
+          bulkCheckResults={reviewBulkResults}
+          isProcessing={isProcessing}
+        />
 
         <div className="mx-auto max-w-6xl space-y-8">
           <header className="space-y-3 border-b border-gray-200 pb-6 text-center dark:border-gray-800">

@@ -2,12 +2,22 @@
 
 import React, { useState, useRef } from "react";
 import { readExcel, Person, downloadStyledExcel } from "@/lib/excel";
-import { addManyToBlacklist, getBlacklistIds } from "@/lib/blacklist";
+import { addManyToBlacklist, getBlacklistIds, bulkCheckBlacklist } from "@/lib/blacklist";
 import { validateNationalId } from "@/lib/validation";
 import RouteGuard from "@/components/RouteGuard";
 import TrackSelector from "@/components/shared/TrackSelector";
+import ReviewWarningsModal from "@/components/shared/ReviewWarningsModal";
 
 type ParsedFileState = { name: string; size: number; data: Person[] };
+
+interface IntermediateAttendanceData {
+  registeredPeople: Person[];
+  attendedPeople: Person[];
+  newAbsenteesUI: Person[];
+  invalidEntries: { name: string; nationalId: string; reason: string }[];
+  skippedExisting: Person[];
+  unregisteredAttendees: Person[];
+}
 
 export default function Home() {
   const [registeredFile, setRegisteredFile] = useState<ParsedFileState | null>(null);
@@ -20,6 +30,11 @@ export default function Home() {
   const [selectedTrack, setSelectedTrack] = useState<string>("غير محدد");
 
   const [swapModal, setSwapModal] = useState({ isOpen: false, registeredCount: 0, attendanceCount: 0 });
+
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewTargetedAttendees, setReviewTargetedAttendees] = useState<Person[]>([]);
+  const [reviewBulkResults, setReviewBulkResults] = useState<Record<string, { status: string; warningsCount: number }>>({});
+  const [intermediateProcessData, setIntermediateProcessData] = useState<IntermediateAttendanceData | null>(null);
 
   const [result, setResult] = useState<{
     registeredCount: number;
@@ -145,13 +160,61 @@ export default function Home() {
         }
       });
 
+      const intermediateData = {
+        registeredPeople, attendedPeople, newAbsenteesUI, invalidEntries, skippedExisting, unregisteredAttendees
+      };
+
+      if (validToBlacklist.length > 0 || attendedPeople.length > 0) {
+        if (validToBlacklist.length > 0) {
+          const bulkResults = await bulkCheckBlacklist(validToBlacklist.map(p => p.nationalId));
+          setReviewTargetedAttendees(validToBlacklist);
+          setReviewBulkResults(bulkResults);
+          setIntermediateProcessData(intermediateData);
+          setIsReviewModalOpen(true);
+          setLoading(false);
+          return; // Wait for modal confirmation
+        } else {
+          // No one to warn, but we have attendees to clear
+          await finalizeProcess([], attendedPeople, intermediateData);
+        }
+      } else {
+        // Nothing to do
+        setResult({
+          registeredCount: registeredPeople.length,
+          attendedCount: attendedPeople.length,
+          addedCount: 0,
+          clearedCount: 0,
+          upgradedCount: 0,
+          absentees: newAbsenteesUI,
+          invalidEntries,
+          attendedPeople,
+          skippedExisting,
+          unregisteredAttendees,
+        });
+        showToast("لا يوجد شيء لتعديله.", "success");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("حدث خطأ أثناء معالجة الملفات. يرجى التأكد من صيغة الملفات.", "error");
+    } finally {
+      if (!isReviewModalOpen) setLoading(false);
+    }
+  };
+
+  const finalizeProcess = async (
+    selectedValidToBlacklist: Person[],
+    attendedPeople: Person[],
+    data: IntermediateAttendanceData
+  ) => {
+    setLoading(true);
+    try {
       let added = 0;
       let cleared = 0;
       let upgraded = 0;
 
-      if (validToBlacklist.length > 0 || attendedPeople.length > 0) {
+      if (selectedValidToBlacklist.length > 0 || attendedPeople.length > 0) {
         const res = await addManyToBlacklist(
-          validToBlacklist.map((p) => ({
+          selectedValidToBlacklist.map((p) => ({
             name: p.name,
             nationalId: p.nationalId,
           })),
@@ -164,26 +227,32 @@ export default function Home() {
       }
 
       setResult({
-        registeredCount: registeredPeople.length,
-        attendedCount: attendedPeople.length,
+        registeredCount: data.registeredPeople.length,
+        attendedCount: data.attendedPeople.length,
         addedCount: added,
         clearedCount: cleared,
         upgradedCount: upgraded,
-        absentees: newAbsenteesUI,
-        invalidEntries,
-        attendedPeople,
-        skippedExisting,
-        unregisteredAttendees,
+        absentees: data.newAbsenteesUI,
+        invalidEntries: data.invalidEntries,
+        attendedPeople: data.attendedPeople,
+        skippedExisting: data.skippedExisting,
+        unregisteredAttendees: data.unregisteredAttendees,
       });
-
 
       showToast("تمت المقارنة والإضافة بنجاح!", "success");
     } catch (error) {
       console.error(error);
-      showToast("حدث خطأ أثناء معالجة الملفات. يرجى التأكد من صيغة الملفات.", "error");
+      showToast("حدث خطأ أثناء تطبيق الإنذارات.", "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmWarnings = async (selectedIds: string[]) => {
+    if (!intermediateProcessData) return;
+    setIsReviewModalOpen(false);
+    const selectedValidToBlacklist = reviewTargetedAttendees.filter(p => selectedIds.includes(p.nationalId));
+    await finalizeProcess(selectedValidToBlacklist, intermediateProcessData.attendedPeople, intermediateProcessData);
   };
 
   const handleDownloadAttended = () => {
@@ -219,6 +288,14 @@ export default function Home() {
   return (
     <RouteGuard allowedRoles={["admin", "employee"]}>
     <main className="flex-1 bg-transparent dark:bg-transparent text-gray-900 dark:text-gray-100 p-6 sm:p-12 font-sans w-full relative min-h-screen">
+      <ReviewWarningsModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onConfirm={handleConfirmWarnings}
+        targetedAttendees={reviewTargetedAttendees}
+        bulkCheckResults={reviewBulkResults}
+        isProcessing={loading}
+      />
       {/* Swap Detection Modal */}
       {swapModal.isOpen && (
         <div className="absolute inset-0 z-50 flex items-start justify-center pt-20 pb-10 bg-black/60 min-h-full backdrop-blur-sm">

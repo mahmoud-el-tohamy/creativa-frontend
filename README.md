@@ -52,12 +52,14 @@ The system is fully installable as a standalone Progressive Web App on mobile an
 ### 📝 Attendance Management
 
 - **Single-session attendance**: Upload registration and attendance sheets, detect absentees, validate national IDs, avoid duplicate blacklist entries, and export attended or blacklisted result sheets.
+- **Safe Warning Flow**: Intercepts warning actions with a secure confirmation modal, fetching and displaying real-time warning counts for attendees to prevent accidental punitive actions or blacklisting.
 - **Swap detection**: Warns operators when the attendance file appears larger than the registration file, reducing accidental reversed uploads.
-- **Multi-day attendance**: Aggregates repeated attendance rows by participant ID, applies configurable minimum attendance thresholds, separates passed and failed participants, and adds eligible failures to the blacklist.
+- **Multi-day attendance**: Aggregates repeated attendance rows by participant ID, applies configurable minimum attendance thresholds, separates passed and failed participants, and securely escalates eligible failures.
 
 ### ⏱️ Hours & Timetable Tracking
 
 - **Session Management**: Log training sessions, modes (online/offline), hours, attendee counts, and evaluation links.
+- **Specialized Tracking**: Automatically detects and categorizes "Incubation" and "Consultation" sessions, keeping them visible on the analytics dashboard while isolating them from official timetable exports.
 - **Bulk Excel Import**: Effortlessly import multiple sessions via Excel sheets with built-in deduplication.
 - **Dynamic Timetables**: Automatically generates comprehensive visual timetables mapped against customizable fiscal years.
 - **Planned Timetable Dashboard**: Create and update the expected hours plan for the whole year across all programs.
@@ -129,6 +131,7 @@ Most operational workflows are intentionally client-heavy. Excel parsing, list c
 - **`RouteGuard.tsx`**: Shared protected-route wrapper that redirects unauthenticated users and blocks unauthorized roles.
 - **`TrackSelector.tsx`**: Shared track selection component allowing dynamic addition and removal of workshop tracks across modules.
 - **`FilterBar.tsx`**: Centralized filtering component standardizing search, date ranges, sorting, and pagination controls.
+- **`ReviewWarningsModal.tsx`**: Critical safety component that fetches live attendee statuses and requires explicit confirmation before applying warnings or blacklist actions.
 - **`MultiDayAttendance.tsx`**: Dedicated multi-day attendance processor used by the `/multi-day-attendance` route.
 
 ### Architecture Highlights (Refactoring)

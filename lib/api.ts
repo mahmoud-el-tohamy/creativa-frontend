@@ -150,7 +150,8 @@ export type ProgramName =
   | "Entrepreneurship"
   | "Awareness event"
   | "Hackathons / Competitions"
-  | "Acceleration program";
+  | "Acceleration program"
+  | "Incubation";
 
 export type TimetableProgram =
   | "Entrepreneurship / Technology transfer"
@@ -418,7 +419,9 @@ export const blacklistAPI = {
     // Convert array back to Set
     return new Set(res.data as unknown as string[]);
   }),
-  check: (nationalId: string) => api.get<{ isBlacklisted: boolean }>(`/blacklist/check/${nationalId}`)
+  check: (nationalId: string) => api.get<{ isBlacklisted: boolean }>(`/blacklist/check/${nationalId}`),
+  bulkCheck: (nationalIds: string[]) => 
+    api.post<{ success: boolean; data: Record<string, { status: string; warningsCount: number }> }>("/blacklist/bulk-check", { nationalIds })
 };
 
 export const usersAPI = {
