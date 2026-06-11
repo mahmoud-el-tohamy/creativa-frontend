@@ -238,6 +238,7 @@ export interface IMonthData {
   daysInMonth: number;
   monthlyDays: number;
   programs: Record<TimetableProgram, IProgramDayMap>;
+  consultations?: Record<string, number[]>;
 }
 
 export interface IAnnualTotal {
