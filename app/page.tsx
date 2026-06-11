@@ -592,7 +592,7 @@ export default function Dashboard() {
         <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">توزيع طرق التدريب</h2>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">أونلاين مقابل أوفلاين</p>
-          <div className="w-full h-[250px] relative" dir="ltr">
+          <div className="w-full h-[300px] relative" dir="ltr">
             <ChartContainer loading={trainingStatsLoading}>
               {({ height }) => {
                 const modeData = [
@@ -620,7 +620,7 @@ export default function Dashboard() {
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
                 );
@@ -725,7 +725,7 @@ export default function Dashboard() {
         <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">توزيع نوع التدريب</h2>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">التدريب مقابل فعاليات الوعي</p>
-          <div className="w-full h-[250px]" dir="ltr">
+          <div className="w-full h-[300px]" dir="ltr">
             <ChartContainer loading={trainingStatsLoading}>
               {({ height }) => {
                 const RADIAN = Math.PI / 180;
@@ -757,7 +757,7 @@ export default function Dashboard() {
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
                 );

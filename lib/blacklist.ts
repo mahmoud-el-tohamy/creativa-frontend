@@ -53,3 +53,9 @@ export async function isBlacklisted(nationalId: string): Promise<boolean> {
   const res = await blacklistAPI.check(nationalId);
   return res.data.isBlacklisted;
 }
+
+export async function bulkCheckBlacklist(nationalIds: string[]): Promise<Record<string, { status: string; warningsCount: number }>> {
+  if (!nationalIds || nationalIds.length === 0) return {};
+  const res = await blacklistAPI.bulkCheck(nationalIds);
+  return res.data.data;
+}

@@ -82,6 +82,7 @@ const PROGRAM_NAMES: ProgramName[] = [
   "Awareness event",
   "Hackathons / Competitions",
   "Acceleration program",
+  "Incubation",
 ];
 
 const TIMETABLE_PROGRAMS: TimetableProgram[] = [
@@ -705,6 +706,8 @@ function SessionModal({
                       nextForm.programName = val;
                       if (val === "Awareness event") {
                         nextForm.type = "Awareness Event";
+                      } else if (val === "Incubation") {
+                        nextForm.type = "Incubation";
                       } else if (f.type === "Consultation") {
                         nextForm.type = "Training";
                       }
@@ -742,7 +745,7 @@ function SessionModal({
                 </label>
                 <CustomSelect
                   value={form.type}
-                  disabled={form.programName === "Awareness event"}
+                  disabled={form.programName === "Awareness event" || form.programName === "Incubation"}
                   options={[
                     { value: "Training", label: "تدريب" },
                     { value: "Awareness Event", label: "فعالية توعوية" },
