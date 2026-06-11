@@ -17,6 +17,7 @@ const ROLE_META: Record<UserRole, { label: string; color: string }> = {
   admin:    { label: "مدير",   color: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300" },
   employee: { label: "موظف",   color: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" },
   viewer:   { label: "مشاهد", color: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
+  accountant: { label: "محاسب", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" },
 };
 
 const BASE_LINKS_ALL: NavLink[] = [
@@ -27,6 +28,7 @@ const BASE_LINKS_ALL: NavLink[] = [
   { href: "/filter",      label: "فلترة القوائم" },
   { href: "/organize",    label: "تنظيم شيت الحضور" },
   { href: "/hours",       label: "متابعة الساعات" },
+  { href: "/instructors", label: "المدربون" },
   { href: "/certificates",label: "الشهادات" },
   { href: "/blacklist",   label: "البلاك ليست" },
 ];
@@ -102,24 +104,82 @@ export default function Navbar() {
 
   const isAdmin = user?.role === "admin";
   const isViewer = user?.role === "viewer";
+  const isAccountant = user?.role === "accountant";
 
-  const navLinks = isViewer
+  const navLinks = isAccountant
+    ? [{ href: "/", label: "الرئيسية" }, { href: "/instructors", label: "المدربون" }]
+    : isViewer
     ? VIEWER_LINKS
     : isAdmin
     ? [...BASE_LINKS_ALL, ...ADMIN_LINKS]
     : BASE_LINKS_ALL;
 
-  const desktopNavItems = isViewer
+  const desktopNavItems = isAccountant
     ? [
-        { type: "link" as const, href: "/", label: "الرئيسية" },
-        { type: "link" as const, href: "/blacklist", label: "البلاك ليست" },
+        { 
+          type: "link" as const, 
+          href: "/", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+              الرئيسية
+            </span>
+          ) as unknown as string
+        },
+        { 
+          type: "link" as const, 
+          href: "/instructors", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              المدربون
+            </span>
+          ) as unknown as string 
+        },
+      ]
+    : isViewer
+    ? [
+        { 
+          type: "link" as const, 
+          href: "/", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+              الرئيسية
+            </span>
+          ) as unknown as string
+        },
+        { 
+          type: "link" as const, 
+          href: "/blacklist", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              البلاك ليست
+            </span>
+          ) as unknown as string 
+        },
       ]
     : [
-        { type: "link" as const, href: "/", label: "الرئيسية" },
+        { 
+          type: "link" as const, 
+          href: "/", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+              الرئيسية
+            </span>
+          ) as unknown as string
+        },
         {
           type: "group" as const,
           key: "attendance" as const,
-          label: "الحضور",
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+              الحضور
+            </span>
+          ) as unknown as string,
           links: [
             { href: "/attendance", label: "رصد الحضور" },
             { href: "/multi-day-attendance", label: "متعدد الأيام" },
@@ -128,22 +188,83 @@ export default function Navbar() {
         {
           type: "group" as const,
           key: "sheets" as const,
-          label: "تنظيم الشيتات",
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+              تنظيم الشيتات
+            </span>
+          ) as unknown as string,
           links: [
             { href: "/organize", label: "تنظيم شيت الحضور" },
             { href: "/attendance-sheet", label: "فصل شيت الحضور" },
           ],
         },
-        { type: "link" as const, href: "/filter", label: "الفلترة" },
-        { type: "link" as const, href: "/hours", label: "متابعة الساعات" },
-        { type: "link" as const, href: "/certificates", label: "الشهادات" },
-        { type: "link" as const, href: "/blacklist", label: "البلاك ليست" },
+        { 
+          type: "link" as const, 
+          href: "/filter", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              الفلترة
+            </span>
+          ) as unknown as string 
+        },
+        { 
+          type: "link" as const, 
+          href: "/hours", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              متابعة الساعات
+            </span>
+          ) as unknown as string 
+        },
+        {
+          type: "link" as const,
+          href: "/instructors",
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              المدربون
+            </span>
+          ) as unknown as string,
+        },
+        { 
+          type: "link" as const, 
+          href: "/certificates", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              الشهادات
+            </span>
+          ) as unknown as string 
+        },
+        { 
+          type: "link" as const, 
+          href: "/blacklist", 
+          label: (
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              البلاك ليست
+            </span>
+          ) as unknown as string 
+        },
         ...(isAdmin
           ? [
               {
                 type: "group" as const,
                 key: "admin" as const,
-                label: "الإدارة",
+                label: (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    الإدارة
+                  </span>
+                ) as unknown as string,
                 links: ADMIN_LINKS,
               },
             ]
@@ -156,7 +277,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-40 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" ref={menuRef}>
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8" ref={menuRef}>
         <div className="flex justify-between items-center h-14 md:h-16">
 
           {/* Logo */}
@@ -177,7 +298,7 @@ export default function Navbar() {
             <div className="hidden xl:flex items-stretch h-14 md:h-16 gap-0.5" ref={desktopNavRef}>
               {desktopNavItems.map((item) => {
                 if (item.type === "link") {
-                  const isActive = pathname === item.href || (item.href === "/hours" && pathname.startsWith("/hours"));
+                  const isActive = pathname === item.href || (item.href === "/hours" && pathname.startsWith("/hours")) || (item.href === "/instructors" && pathname.startsWith("/instructors"));
                   return (
                     <Link
                       key={item.href}
@@ -335,7 +456,7 @@ export default function Navbar() {
         }`}>
           <div className="py-3 flex flex-col gap-1">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href || (link.href === "/hours" && pathname.startsWith("/hours"));
+              const isActive = pathname === link.href || (link.href === "/hours" && pathname.startsWith("/hours")) || (link.href === "/instructors" && pathname.startsWith("/instructors"));
               const isAdminLink = ADMIN_LINKS.some((l) => l.href === link.href);
               return (
                 <Link

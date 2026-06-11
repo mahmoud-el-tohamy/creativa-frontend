@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import Link from "next/link";
 import { BlacklistEntry } from "@/lib/blacklist";
-import api, { ChartDataBucket, hoursAPI, TrainingDashboardStats, createCancelToken } from "@/lib/api";
+import api, { ChartDataBucket, hoursAPI, TrainingDashboardStats, createCancelToken, instructorsAPI } from "@/lib/api";
+import { PeriodType, AccountantDashboardData } from "@/lib/types/instructors";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LineChart,
@@ -35,14 +36,15 @@ function getCurrentFiscalYear() {
 }
 
 const PROGRAM_COLORS: Record<string, string> = {
-  "Entrepreneurship / Technology transfer": "#1D9E75",
-  "Career development": "#7C3AED",
-  "Freelancing coaches": "#F59E0B",
+  "Entrepreneurship": "#1D9E75",
+  "Career Development": "#7C3AED",
+  "Freelancing": "#F59E0B",
   "Acceleration program": "#6B7280",
   "Hackathons / Competitions": "#EF4444",
-  "Awareness events": "#EAB308",
+  "Awareness event": "#EAB308",
   "Incubation": "#9333EA",
-  "Consultation": "#0284C7"
+  "Tech": "#0284C7",
+  "Consultation & Mentorship": "#db2777"
 };
 
 const PROGRAM_LABELS: Record<string, string> = {
@@ -221,6 +223,20 @@ function DashboardTableSkeleton() {
 }
 
 export default function Dashboard() {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (!user) return null; // Prevent UI leak for unauthenticated users
+
+  if (user.role === "accountant") {
+    return <AccountantDashboard />;
+  }
+
+  return <AdminEmployeeDashboard />;
+}
+
+function AdminEmployeeDashboard() {
   const { user, loading: authLoading } = useAuth();
   const canWrite = user?.role === "admin" || user?.role === "employee";
   
@@ -934,6 +950,478 @@ export default function Dashboard() {
     </main>
   );
 }
+
+// ─── ACCOUNTANT DASHBOARD ─────────────────────────────────────────────────────
+
+const AccountantDashboard = memo(() => {
+  const [data, setData] = useState<AccountantDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<PeriodType>("year");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [exportingSessions, setExportingSessions] = useState(false);
+  const [exportingProfiles, setExportingProfiles] = useState(false);
+
+  const handleExportSessions = async () => {
+    try {
+      setExportingSessions(true);
+      const res = await instructorsAPI.exportAccountantSessions(period, startDate, endDate);
+      const contentType = (res.headers["content-type"] as string) || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const blob = new Blob([res.data], { type: contentType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `All_Instructors_${period}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent("global-toast", { detail: "تعذر تصدير جلسات الفترة" }));
+    } finally {
+      setExportingSessions(false);
+    }
+  };
+
+  const handleExportProfiles = async () => {
+    try {
+      setExportingProfiles(true);
+      const res = await instructorsAPI.exportAccountantProfiles();
+      const contentType = (res.headers["content-type"] as string) || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const blob = new Blob([res.data], { type: contentType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `All_Profiles.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(new CustomEvent("global-toast", { detail: "تعذر تصدير بيانات المدربين" }));
+    } finally {
+      setExportingProfiles(false);
+    }
+  };
+
+  useEffect(() => {
+    if (period === "custom" && (!startDate || !endDate)) return;
+    let isMounted = true;
+    instructorsAPI.getAccountantDashboard(period, startDate, endDate)
+      .then((res) => {
+        if (isMounted) setData(res.data.data);
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+      
+    return () => {
+      isMounted = false;
+    };
+  }, [period, startDate, endDate]);
+
+  const formatCurrency = (n: number) => n.toLocaleString("ar-EG") + " ج.م";
+
+  const renderTableRows = () => {
+    if (!data || data.instructorSummaries.length === 0) {
+      return (
+        <tr>
+          <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+            لا توجد جلسات مسجلة للمدربين في هذه الفترة
+            <br />
+            <Link href="/instructors" className="text-teal-600 dark:text-teal-400 font-bold hover:underline mt-2 inline-block">
+              الذهاب إلى المدربين
+            </Link>
+          </td>
+        </tr>
+      );
+    }
+
+    return data.instructorSummaries.map((i) => (
+      <tr key={i.instructorId} className={`border-b border-gray-50 last:border-0 dark:border-gray-700/50 ${!i.hasRates ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}>
+        <td className="px-6 py-4">
+          <Link href={`/instructors/${i.instructorId}`} className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+            {i.instructorName}
+          </Link>
+        </td>
+        <td className="px-6 py-4">
+          <span className="inline-flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-2 py-1 rounded-md">
+            {i.totalSessions}
+          </span>
+        </td>
+        <td className="px-6 py-4">{i.totalHours}س</td>
+        <td className="px-6 py-4">{i.totalDays}</td>
+        <td className="px-6 py-4">{formatCurrency(i.trainingAmount)}</td>
+        <td className="px-6 py-4">{i.consultationAmount > 0 ? formatCurrency(i.consultationAmount) : "—"}</td>
+        <td className="px-6 py-4 font-bold text-teal-600 dark:text-teal-400">{formatCurrency(i.totalAmount)}</td>
+        <td className="px-6 py-4">
+          {!i.hasRates ? (
+            <span className="inline-flex items-center justify-center bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold px-2 py-1 rounded-md">
+              بدون أسعار
+            </span>
+          ) : (
+            <span className="inline-flex items-center justify-center bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-1 rounded-md">
+              محسوب
+            </span>
+          )}
+        </td>
+      </tr>
+    ));
+  };
+
+  return (
+    <main className="flex-1 p-4 sm:p-6 lg:p-12 font-sans text-gray-900 dark:text-gray-100 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8 overflow-x-hidden">
+      {/* SECTION 1 — Page Header + Period Selector */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400 tracking-tight">
+            لوحة التحكم المالية
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-lg mt-2">
+            نظرة عامة على استحقاقات المدربين
+          </p>
+        </div>
+      </header>
+
+      {/* SECTION 2 — Alert Banner */}
+      {!loading && data?.instructorsWithoutRates && data.instructorsWithoutRates.length > 0 && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl dark:bg-amber-900/20">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="mr-3">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                ⚠ {data.instructorsWithoutRates.length} مدرب/مدربين لم يتم تحديد أسعارهم — الاستحقاقات غير دقيقة
+              </p>
+              <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                <Link href="/instructors" className="font-bold underline">عرض المدربين</Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3 — Top Stats Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title="إجمالي الاستحقاقات" 
+          value={loading ? 0 : formatCurrency(data?.totalPayable || 0)} 
+          loading={loading} 
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />} 
+          color="text-teal-600 dark:text-teal-400" 
+          bg="bg-teal-50 dark:bg-teal-900/20" 
+          border="border-teal-100 dark:border-teal-900/30"
+        />
+          <StatCard 
+            title="استحقاقات التدريب" 
+            value={loading ? 0 : formatCurrency(data?.trainingPayable || 0)} 
+            loading={loading} 
+            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />} 
+            color="text-blue-600 dark:text-blue-400" 
+            bg="bg-blue-50 dark:bg-blue-900/20" 
+            border="border-blue-100 dark:border-blue-900/30"
+          />
+          <StatCard 
+            title="استحقاقات الاستشارات" 
+            value={loading ? 0 : formatCurrency(data?.consultationPayable || 0)} 
+            loading={loading} 
+            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />} 
+            color="text-purple-600 dark:text-purple-400" 
+            bg="bg-purple-50 dark:bg-purple-900/20" 
+            border="border-purple-100 dark:border-purple-900/30"
+          />
+        <StatCard 
+          title="إجمالي الجلسات" 
+          value={loading ? 0 : `${data?.totalSessions || 0} جلسة`} 
+          loading={loading} 
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />} 
+          color="text-amber-600 dark:text-amber-400" 
+          bg="bg-amber-50 dark:bg-amber-900/20" 
+          border="border-amber-100 dark:border-amber-900/30"
+        />
+
+        {/* TIME FILTER WIDGET */}
+        <div className="lg:col-span-2 col-span-1 sm:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col justify-center gap-4 min-h-[112px] sm:min-h-[128px]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h3 className="font-bold text-gray-700 dark:text-gray-300">تحديد فترة البيانات</h3>
+            <div className="relative flex-1 sm:max-w-[200px]">
+              <select
+                value={period}
+                onChange={(e) => {
+                  setLoading(true);
+                  setPeriod(e.target.value as PeriodType);
+                  if (e.target.value !== "custom") {
+                    setStartDate("");
+                    setEndDate("");
+                  }
+                }}
+                className="w-full appearance-none bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2 pl-10 pr-4 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+              >
+                <option value="month">آخر شهر</option>
+                <option value="3months">آخر ربع سنة</option>
+                <option value="6months">آخر نص سنة</option>
+                <option value="year">آخر سنة</option>
+                <option value="custom">مخصص (تحديد تواريخ)</option>
+              </select>
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          
+          {period === "custom" && (
+            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex-1 relative">
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">من تاريخ</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setLoading(true);
+                    setStartDate(e.target.value);
+                  }}
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div className="flex-1 relative">
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">إلى تاريخ</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setLoading(true);
+                    setEndDate(e.target.value);
+                  }}
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2 px-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        {/* SECTION 3.5 (Moved up into the grid) — Actions and Breakdown */}
+        {loading ? (
+          <div className="lg:col-span-2 col-span-1 sm:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col justify-center min-h-[112px] sm:min-h-[128px]">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 w-full animate-pulse">
+              <div className="w-full sm:w-[45%] space-y-4">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full w-full"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mt-2"></div>
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full w-full"></div>
+              </div>
+              <div className="hidden sm:block w-px h-16 bg-gray-200 dark:bg-gray-700"></div>
+              <div className="w-full sm:w-[45%] flex flex-col gap-3">
+                <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded-xl w-full"></div>
+                <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded-xl w-full"></div>
+              </div>
+            </div>
+          </div>
+        ) : data && data.totalSessions > 0 ? (
+          <div className="lg:col-span-2 col-span-1 sm:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex flex-col justify-center min-h-[112px] sm:min-h-[128px]">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 w-full">
+              {/* Online/Offline */}
+              <div className="w-full sm:w-[45%]">
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs sm:text-sm mb-1 font-bold">
+                      <span className="text-teal-700 dark:text-teal-400">أونلاين</span>
+                      <span className="text-teal-700 dark:text-teal-400">
+                        {Math.round((data.onlineCount / data.totalSessions) * 100)}% <span className="text-[10px] sm:text-xs text-gray-500">({data.onlineCount})</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 sm:h-2">
+                      <div className="bg-teal-500 h-1.5 sm:h-2 rounded-full" style={{ width: `${(data.onlineCount / data.totalSessions) * 100}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs sm:text-sm mb-1 font-bold">
+                      <span className="text-gray-700 dark:text-gray-300">أوفلاين</span>
+                      <span className="text-gray-700 dark:text-gray-300">
+                        {Math.round((data.offlineCount / data.totalSessions) * 100)}% <span className="text-[10px] sm:text-xs text-gray-500">({data.offlineCount})</span>
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 sm:h-2">
+                      <div className="bg-gray-400 h-1.5 sm:h-2 rounded-full" style={{ width: `${(data.offlineCount / data.totalSessions) * 100}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider for desktop */}
+              <div className="hidden sm:block w-px h-16 bg-gray-200 dark:bg-gray-700"></div>
+
+              {/* Export Reports */}
+              <div className="w-full sm:w-[45%] flex flex-col gap-2.5">
+                <button
+                  onClick={handleExportSessions}
+                  disabled={exportingSessions}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-900/20 transition-all hover:-translate-y-0.5 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:translate-y-0 disabled:opacity-70 dark:shadow-none w-full"
+                >
+                  {exportingSessions ? (
+                    <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10" strokeWidth="4" strokeDasharray="30" strokeDashoffset="10" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  جلسات الفترة
+                </button>
+                <button
+                  onClick={handleExportProfiles}
+                  disabled={exportingProfiles}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 disabled:opacity-70 w-full"
+                >
+                  {exportingProfiles ? (
+                    <svg className="h-4 w-4 animate-spin text-gray-500 dark:text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10" strokeWidth="4" strokeDasharray="30" strokeDashoffset="10" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  ملفات المدربين
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      {/* SECTION 4 — Charts Row */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* CHART A: Monthly Trend */}
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">الاستحقاق الشهري</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">مقارنة بين الساعات والمبالغ</p>
+          <div className="w-full relative h-[300px]" dir="ltr">
+            <ChartContainer loading={loading}>
+              {({ height }) => {
+                if (!data || data.monthlyTrend.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <p className="text-gray-400 font-medium">لا توجد بيانات في هذه الفترة</p>
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <ComposedChart data={data.monthlyTrend} margin={{ top: 20, right: 30, left: 30, bottom: 20 }} className="dir-ltr">
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} dy={10} />
+                      <YAxis yAxisId="left" tickMargin={10} width={50} axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} tickCount={6} />
+                      <YAxis yAxisId="right" tickMargin={10} width={60} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#14b8a6', fontSize: 13, fontWeight: 600 }} tickCount={6} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                      <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ paddingBottom: '10px' }} />
+                      <Bar yAxisId="left" dataKey="totalHours" name="الساعات" fill="#3b82f6" fillOpacity={0.8} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                      <Bar yAxisId="right" dataKey="totalAmount" name="المبلغ (ج.م)" fill="#14b8a6" fillOpacity={0.8} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                );
+              }}
+            </ChartContainer>
+          </div>
+        </div>
+
+        {/* CHART B: Program Breakdown */}
+        <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">توزيع الساعات حسب البرنامج</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">إجمالي الساعات للبرامج التدريبية</p>
+          <div className="w-full h-[300px]" dir="ltr">
+            <ChartContainer loading={loading}>
+              {({ height }) => {
+                if (!data || data.programBreakdown.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <p className="text-gray-400 font-medium">لا توجد بيانات في هذه الفترة</p>
+                    </div>
+                  );
+                }
+                const pieData = data.programBreakdown.map(p => ({
+                  name: p.program,
+                  value: p.totalHours,
+                  fill: PROGRAM_COLORS[p.program] || "#64748b",
+                  sessions: p.totalSessions
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={2} dataKey="value" stroke="none">
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: "20px" }} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              }}
+            </ChartContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 5 — Instructor Financial Table */}
+      <section className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">تفصيل استحقاقات المدربين</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{data?.period.label}</p>
+        </div>
+        
+        {loading ? (
+          <DashboardTableSkeleton />
+        ) : (
+          <div className="overflow-x-auto min-h-[300px]">
+            <table className="w-full text-right text-sm">
+              <thead className="border-b border-gray-100 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400 whitespace-nowrap">
+                <tr>
+                  <th className="px-6 py-4 font-bold">المدرب</th>
+                  <th className="px-6 py-4 font-bold">الجلسات</th>
+                  <th className="px-6 py-4 font-bold">الساعات</th>
+                  <th className="px-6 py-4 font-bold">الأيام</th>
+                  <th className="px-6 py-4 font-bold">التدريب</th>
+                  <th className="px-6 py-4 font-bold">الاستشارات</th>
+                  <th className="px-6 py-4 font-bold text-teal-600 dark:text-teal-400">الإجمالي</th>
+                  <th className="px-6 py-4 font-bold">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {renderTableRows()}
+              </tbody>
+              {data && data.instructorSummaries.length > 0 && (
+                <tfoot className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 font-bold text-gray-900 dark:text-gray-100">
+                  <tr>
+                    <td className="px-6 py-4 text-left">الإجمالي:</td>
+                    <td className="px-6 py-4">{data.totalSessions}</td>
+                    <td className="px-6 py-4">{data.totalHours}س</td>
+                    <td className="px-6 py-4">{data.instructorSummaries.reduce((sum, i) => sum + i.totalDays, 0)}</td>
+                    <td className="px-6 py-4">{formatCurrency(data.trainingPayable)}</td>
+                    <td className="px-6 py-4">{formatCurrency(data.consultationPayable)}</td>
+                    <td className="px-6 py-4 text-lg text-teal-600 dark:text-teal-400">{formatCurrency(data.totalPayable)}</td>
+                    <td className="px-6 py-4"></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+});
+AccountantDashboard.displayName = "AccountantDashboard";
 
 // Reusable Stat Card Component
 function StatCard({

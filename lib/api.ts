@@ -16,7 +16,7 @@ export function createCancelToken() {
 
 // TypeScript Interfaces for API Responses
 
-export type UserRole = "admin" | "employee" | "viewer";
+export type UserRole = "admin" | "employee" | "viewer" | "accountant";
 
 export interface AppUser {
   id: string;
@@ -572,4 +572,67 @@ export const plannedAPI = {
   listYears: () =>
     api.get<{ success: boolean; data: string[] }>("/planned"),
 };
+
+// ─── Instructors API ──────────────────────────────────────────────────────────
+
+import type {
+  InstructorListParams,
+  InstructorListResponse,
+  InstructorResponse,
+  CreateInstructorData,
+  UpdateInstructorData,
+  UpdateRatesData,
+  InstructorDashboardData,
+  PeriodType,
+  AccountantDashboardData,
+} from "@/lib/types/instructors";
+
+export const instructorsAPI = {
+  list: (params?: InstructorListParams) =>
+    api.get<InstructorListResponse>("/instructors", { params }),
+
+  get: (id: string) =>
+    api.get<InstructorResponse>(`/instructors/${id}`),
+
+  create: (data: CreateInstructorData) =>
+    api.post<InstructorResponse>("/instructors", data),
+
+  update: (id: string, data: UpdateInstructorData) =>
+    api.put<InstructorResponse>(`/instructors/${id}`, data),
+
+  updateRates: (id: string, data: UpdateRatesData) =>
+    api.patch<InstructorResponse>(`/instructors/${id}/rates`, data),
+
+  delete: (id: string) =>
+    api.delete(`/instructors/${id}`),
+
+  getDashboard: (id: string, period: PeriodType, startDate?: string, endDate?: string) =>
+    api.get<{ success: boolean; data: InstructorDashboardData }>(
+      `/instructors/${id}/dashboard`,
+      { params: { period, startDate, endDate } }
+    ),
+
+  getAccountantDashboard: (period: PeriodType, startDate?: string, endDate?: string) =>
+    api.get<{ success: boolean; data: AccountantDashboardData }>(
+      "/instructors/summary/dashboard",
+      { params: { period, startDate, endDate } }
+    ),
+
+  exportProfile: (id: string) =>
+    api.get(`/instructors/${id}/export-profile`,
+      { responseType: "blob" }),
+
+  exportSessions: (id: string, period: PeriodType, startDate?: string, endDate?: string) =>
+    api.get(`/instructors/${id}/export`,
+      { params: { period, startDate, endDate }, responseType: "blob" }),
+
+  exportAccountantProfiles: () =>
+    api.get(`/instructors/export/profiles`,
+      { responseType: "blob" }),
+
+  exportAccountantSessions: (period: PeriodType, startDate?: string, endDate?: string) =>
+    api.get(`/instructors/export/sessions`,
+      { params: { period, startDate, endDate }, responseType: "blob" }),
+};
+
 
