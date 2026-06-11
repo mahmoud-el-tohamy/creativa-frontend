@@ -138,7 +138,7 @@ export default function CustomSelect({
           focus:outline-none focus:ring-2 focus:ring-blue-500
           transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span>{selected.label}</span>
+        <span className="truncate">{selected.label}</span>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -165,12 +165,12 @@ export default function CustomSelect({
               />
             </div>
           )}
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto overflow-x-hidden custom-scrollbar">
             {filteredOptions.length > 0 ? filteredOptions.map((o) => (
               <button
                 key={o.value}
                 onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full text-right px-4 py-2.5 text-sm transition-colors
+                className={`w-full text-right px-4 py-2.5 text-sm transition-colors break-words whitespace-normal
                   hover:bg-blue-50 dark:hover:bg-gray-700
                   ${o.value === value
                     ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
