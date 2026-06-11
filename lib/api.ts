@@ -492,9 +492,12 @@ export const hoursAPI = {
   getFiscalYears: () =>
     api.get<{ success: boolean; data: string[] }>("/hours/timetable"),
 
-  importSessions: (file: File) => {
+  importSessions: (file: File, consultationsMap?: Record<number, string>) => {
     const fd = new FormData();
     fd.append("file", file);
+    if (consultationsMap) {
+      fd.append("consultationsMap", JSON.stringify(consultationsMap));
+    }
     return api.post<ImportResult>("/hours/import", fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });

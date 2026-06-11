@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import RouteGuard from "@/components/RouteGuard";
+import * as XLSX from "xlsx";
 import CustomSelect from "@/components/ui/CustomSelect";
 import ToggleSwitch from "@/components/ui/ToggleSwitch";
 import {
@@ -504,26 +505,44 @@ function SessionModal({ open, editing, instructors, onClose, onSaved, onAddInstr
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">اسم البرنامج *</label>
               <CustomSelect
-                value={form.programName}
-                options={PROGRAM_NAMES.map((p) => ({ value: p, label: p }))}
-                onChange={(v) => setForm((f) => ({ ...f, programName: v as ProgramName }))}
+                value={form.type === "Consultation" ? "Consultation" : form.programName}
+                options={[...PROGRAM_NAMES.map((p) => ({ value: p, label: p })), { value: "Consultation", label: "استشارة" }]}
+                onChange={(v) => {
+                  const val = v as ProgramName | "Consultation";
+                  setForm((f) => ({ 
+                    ...f, 
+                    programName: val === "Consultation" ? (PROGRAM_NAMES.includes(f.programName) ? f.programName : "Career Development") : val,
+                    type: val === "Consultation" ? "Consultation" : (f.type === "Consultation" ? "Training" : f.type) 
+                  }));
+                }}
               />
               {errors.programName && <p className="text-xs text-red-500 mt-1">{errors.programName}</p>}
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">النوع *</label>
-              <CustomSelect
-                value={form.type}
-                options={[
-                  { value: "Training", label: "تدريب" },
-                  { value: "Awareness Event", label: "فعالية توعوية" },
-                  { value: "Incubation", label: "احتضان" },
-                  { value: "Consultation", label: "استشارة" },
-                ]}
-                onChange={(v) => setForm((f) => ({ ...f, type: v as "Training" | "Awareness Event" | "Incubation" | "Consultation" }))}
-              />
-              {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
-            </div>
+            {form.type === "Consultation" ? (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">البرنامج المستهدف *</label>
+                <CustomSelect
+                  value={form.programName}
+                  options={PROGRAM_NAMES.map((p) => ({ value: p, label: p }))}
+                  onChange={(v) => setForm((f) => ({ ...f, programName: v as ProgramName }))}
+                />
+                {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">النوع *</label>
+                <CustomSelect
+                  value={form.type}
+                  options={[
+                    { value: "Training", label: "تدريب" },
+                    { value: "Awareness Event", label: "فعالية توعوية" },
+                    { value: "Incubation", label: "احتضان" },
+                  ]}
+                  onChange={(v) => setForm((f) => ({ ...f, type: v as "Training" | "Awareness Event" | "Incubation" }))}
+                />
+                {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
+              </div>
+            )}
           </div>
 
           <div>
@@ -714,6 +733,13 @@ function DeleteConfirm({
 
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 
+interface ConsultationReviewRow {
+  rowIdx: number;
+  sessionName: string;
+  date: string;
+  targetProgram: ProgramName | "";
+}
+
 function ImportModal({ open, onClose, onImported, showToast }: {
   open: boolean;
   onClose: () => void;
@@ -726,26 +752,148 @@ function ImportModal({ open, onClose, onImported, showToast }: {
   const [result, setResult] = useState<{ imported: number; skipped: number; errors: Array<{ row: number; errors: string[] }> } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [analyzing, setAnalyzing] = useState(false);
+  const [consultationsToReview, setConsultationsToReview] = useState<ConsultationReviewRow[] | null>(null);
+  const [workbookCache, setWorkbookCache] = useState<XLSX.WorkBook | null>(null);
+  const [applyToAllTarget, setApplyToAllTarget] = useState<ProgramName | "">("");
+
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFile(null);
       setResult(null);
+      setConsultationsToReview(null);
+      setWorkbookCache(null);
+      setApplyToAllTarget("");
     }
   }, [open]);
+
+  const handleFile = async (f: File) => {
+    setFile(f);
+    setResult(null);
+    setConsultationsToReview(null);
+    setWorkbookCache(null);
+    setApplyToAllTarget("");
+    setAnalyzing(true);
+    try {
+      const buffer = await f.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, cellHTML: false, cellFormula: true });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+
+      const sheetRange = XLSX.utils.decode_range(sheet["!ref"] || "A1:A1");
+      const COLUMN_ALIASES: Record<string, string[]> = {
+        programName: ["program name", "program"],
+        sessionName: ["session name", "session"],
+        date: ["date"],
+        type: ["type"],
+      };
+      const allAliasesFlat = new Set(Object.values(COLUMN_ALIASES).flat().map(a => a.trim().toLowerCase()));
+
+      let headerRowIndex = -1;
+      let bestMatchCount = 0;
+      for (let r = sheetRange.s.r; r <= Math.min(sheetRange.s.r + 4, sheetRange.e.r); r++) {
+        let matchCount = 0;
+        for (let c = sheetRange.s.c; c <= sheetRange.e.c; c++) {
+          const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+          if (cell && cell.v && allAliasesFlat.has(String(cell.v).trim().toLowerCase())) {
+            matchCount++;
+          }
+        }
+        if (matchCount > bestMatchCount) {
+          bestMatchCount = matchCount;
+          headerRowIndex = r;
+        }
+      }
+
+      if (headerRowIndex === -1) {
+        setWorkbookCache(workbook);
+        setAnalyzing(false);
+        return;
+      }
+
+      const headerToColIndex: Record<string, number> = {};
+      for (let c = sheetRange.s.c; c <= sheetRange.e.c; c++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: headerRowIndex, c })];
+        if (cell && cell.v) {
+          headerToColIndex[String(cell.v).trim().toLowerCase()] = c;
+        }
+      }
+
+      const getFieldColIndex = (field: string): number => {
+        for (const alias of COLUMN_ALIASES[field] || []) {
+          const idx = headerToColIndex[alias.trim().toLowerCase()];
+          if (idx !== undefined) return idx;
+        }
+        return -1;
+      };
+
+      const progCol = getFieldColIndex("programName");
+      const typeCol = getFieldColIndex("type");
+      const nameCol = getFieldColIndex("sessionName");
+      const dateCol = getFieldColIndex("date");
+
+      const toReview: ConsultationReviewRow[] = [];
+      const firstDataRow = headerRowIndex + 1;
+
+      for (let r = firstDataRow; r <= sheetRange.e.r; r++) {
+        const progCell = progCol >= 0 ? sheet[XLSX.utils.encode_cell({ r, c: progCol })] : null;
+        const typeCell = typeCol >= 0 ? sheet[XLSX.utils.encode_cell({ r, c: typeCol })] : null;
+        const nameCell = nameCol >= 0 ? sheet[XLSX.utils.encode_cell({ r, c: nameCol })] : null;
+        const dateCell = dateCol >= 0 ? sheet[XLSX.utils.encode_cell({ r, c: dateCol })] : null;
+
+        const progVal = String(progCell?.v ?? "").trim().toLowerCase();
+        const typeVal = String(typeCell?.v ?? "").trim().toLowerCase();
+
+        if (typeVal.includes("consult") || progVal.includes("consult") || typeVal.includes("استشارة") || progVal.includes("استشارة")) {
+          const rawDate = dateCell?.v;
+          let dateStr = "";
+          if (rawDate instanceof Date) {
+            dateStr = rawDate.toLocaleDateString("en-US");
+          } else {
+            dateStr = String(rawDate ?? "");
+          }
+          toReview.push({
+            rowIdx: r,
+            sessionName: String(nameCell?.v ?? "بدون اسم"),
+            date: dateStr,
+            targetProgram: ""
+          });
+        }
+      }
+
+      setWorkbookCache(workbook);
+      if (toReview.length > 0) {
+        setConsultationsToReview(toReview);
+      }
+    } catch (err) {
+      console.error("Error analyzing excel:", err);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
     const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
+    if (f) handleFile(f);
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !workbookCache) return;
     setLoading(true);
     try {
-      const res = await hoursAPI.importSessions(file);
+      let consultationsMap: Record<number, string> | undefined = undefined;
+      
+      if (consultationsToReview && consultationsToReview.length > 0) {
+        consultationsMap = {};
+        for (const reviewRow of consultationsToReview) {
+          consultationsMap[reviewRow.rowIdx] = reviewRow.targetProgram;
+        }
+      }
+
+      const res = await hoursAPI.importSessions(file, consultationsMap);
       setResult({ imported: res.data.imported, skipped: res.data.skipped, errors: res.data.errors });
       if (res.data.imported > 0) {
         showToast(`تم استيراد ${res.data.imported} جلسة بنجاح`, "success");
@@ -758,13 +906,16 @@ function ImportModal({ open, onClose, onImported, showToast }: {
     }
   };
 
+
+  const canUpload = file && !analyzing && (!consultationsToReview || consultationsToReview.every(r => r.targetProgram));
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
+      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90 backdrop-blur">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">استيراد من Excel</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -772,7 +923,7 @@ function ImportModal({ open, onClose, onImported, showToast }: {
             </svg>
           </button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -785,7 +936,9 @@ function ImportModal({ open, onClose, onImported, showToast }: {
             <svg className="w-10 h-10 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            {file ? (
+            {analyzing ? (
+              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 animate-pulse">جاري فحص الملف...</p>
+            ) : file ? (
               <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{file.name}</p>
             ) : (
               <>
@@ -793,17 +946,88 @@ function ImportModal({ open, onClose, onImported, showToast }: {
                 <p className="text-xs text-gray-400 mt-1">.xlsx أو .xls فقط</p>
               </>
             )}
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])} />
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
-            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2">أعمدة الملف المتوقعة:</p>
-            <div className="flex flex-wrap gap-1">
-              {["Program Name", "Session Name", "Date", "No. of Hrs", "Online/Offline", "Instructor", "No. of Attendees", "Type"].map((col) => (
-                <span key={col} className="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 text-gray-600 dark:text-gray-300">{col}</span>
-              ))}
+          {file && !analyzing && <p className="text-sm text-green-600 dark:text-green-400 font-bold mb-4 flex items-center justify-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> تم اختيار: {file.name}</p>}
+
+          {consultationsToReview && consultationsToReview.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="text-blue-600 dark:text-blue-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h3 className="font-bold text-blue-800 dark:text-blue-300">جلسات الاستشارة المكتشفة ({consultationsToReview.length})</h3>
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mb-4">
+                يحتوي الملف على جلسات استشارة. يرجى تحديد البرنامج المستهدف لكل جلسة لإكمال الاستيراد.
+              </p>
+              
+              <div className="mb-4 bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">تطبيق على الكل:</label>
+                  <div className="relative">
+                    <select
+                      value={applyToAllTarget}
+                      onChange={(e) => {
+                        const val = e.target.value as ProgramName | "";
+                        setApplyToAllTarget(val);
+                        if (consultationsToReview) {
+                          setConsultationsToReview(consultationsToReview.map(r => ({ ...r, targetProgram: val })));
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    >
+                      <option value="">اختر برنامج</option>
+                      {PROGRAM_NAMES.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                {consultationsToReview.map((row, idx) => (
+                  <div key={idx} className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate" title={row.sessionName}>{row.sessionName}</p>
+                      <p className="text-xs text-gray-500 mt-1">{row.date}</p>
+                    </div>
+                    <div className="w-full md:w-48 shrink-0 relative">
+                      <select
+                        value={row.targetProgram}
+                        onChange={(e) => {
+                          const newRows = [...consultationsToReview];
+                          newRows[idx].targetProgram = e.target.value as ProgramName | "";
+                          setConsultationsToReview(newRows);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      >
+                        <option value="">اختر برنامج</option>
+                        {PROGRAM_NAMES.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {!consultationsToReview && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+              <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2">أعمدة الملف المتوقعة:</p>
+              <div className="flex flex-wrap gap-1">
+                {["Program Name", "Session Name", "Date", "No. of Hrs", "Online/Offline", "Instructor", "No. of Attendees", "Type"].map((col) => (
+                  <span key={col} className="text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-0.5 text-gray-600 dark:text-gray-300">{col}</span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {result && (
             <div className={`rounded-xl p-4 ${result.skipped > 0 ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800" : "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"}`}>
@@ -811,17 +1035,29 @@ function ImportModal({ open, onClose, onImported, showToast }: {
                 تم استيراد <span className="text-green-600 dark:text-green-400">{result.imported}</span> جلسة
                 {result.skipped > 0 && <> — تم تخطي <span className="text-amber-600 dark:text-amber-400">{result.skipped}</span> بسبب أخطاء</>}
               </p>
+              
+              {result.errors && result.errors.length > 0 && (
+                <div className="mt-3 max-h-40 overflow-y-auto text-xs space-y-2 custom-scrollbar pr-1">
+                  {result.errors.map((err, i) => (
+                    <div key={i} className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900/30">
+                      <span className="font-bold block mb-1">صف {err.row !== -1 ? err.row : "عام"}:</span> 
+                      <ul className="list-disc list-inside">
+                        {err.errors.map((msg, j) => <li key={j}>{msg}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-
-          <div className="flex gap-3">
-            <button onClick={handleUpload} disabled={!file || loading} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl disabled:opacity-50 text-sm transition-colors">
-              {loading ? "جاري الاستيراد..." : "استيراد"}
-            </button>
-            <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-xl hover:opacity-80 text-sm transition-colors">
-              إغلاق
-            </button>
-          </div>
+        </div>
+        <div className="flex-none flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90">
+          <button onClick={handleUpload} disabled={!canUpload || loading} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl disabled:opacity-50 text-sm transition-colors">
+            {loading ? "جاري الاستيراد..." : "استيراد"}
+          </button>
+          <button onClick={onClose} disabled={loading} className="py-2.5 px-6 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold rounded-xl text-sm transition-colors">
+            إغلاق
+          </button>
         </div>
       </div>
     </div>
@@ -1708,9 +1944,9 @@ function ComparisonTab({
     try {
       const res = await plannedAPI.export(selectedComparisonFY);
       downloadBlob(res.data as Blob, `planned-comparison-${selectedComparisonFY}.xlsx`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Export comparison error:", err);
-      showToast(`فشل تحميل تقرير المقارنة: ${err?.message || "خطأ غير معروف"}`, "error");
+      showToast(`فشل تحميل تقرير المقارنة: ${(err as Error)?.message || "خطأ غير معروف"}`, "error");
     }
   };
 
@@ -1718,9 +1954,9 @@ function ComparisonTab({
     try {
       const res = await hoursAPI.exportTimetable(selectedComparisonFY);
       downloadBlob(res.data as Blob, `timetable-${selectedComparisonFY}.xlsx`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Export timetable error:", err);
-      showToast(`فشل تحميل الجدول الزمني: ${err?.message || "خطأ غير معروف"}`, "error");
+      showToast(`فشل تحميل الجدول الزمني: ${(err as Error)?.message || "خطأ غير معروف"}`, "error");
     }
   };
 
