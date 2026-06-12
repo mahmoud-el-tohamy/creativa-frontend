@@ -344,8 +344,22 @@ export interface TrainingDashboardStats {
 export interface ImportResult {
   success: boolean;
   imported: number;
+  updated: number;
   skipped: number;
   errors: Array<{ row: number; data: Record<string, unknown>; errors: string[] }>;
+  updatedDetails?: Array<{
+    row: number;
+    sessionName: string;
+    date: string;
+    instructorName: string;
+    changes: Array<{ field: string; old: unknown; new: unknown }>;
+  }>;
+  unchangedDuplicates?: Array<{
+    row: number;
+    sessionName: string;
+    date: string;
+    instructorName: string;
+  }>;
 }
 
 // Axios Instance Configuration

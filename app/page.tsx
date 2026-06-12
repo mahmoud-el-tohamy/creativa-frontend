@@ -1025,7 +1025,7 @@ const AccountantDashboard = memo(() => {
     };
   }, [period, startDate, endDate]);
 
-  const formatCurrency = (n: number) => n.toLocaleString("ar-EG") + " ج.م";
+  const formatCurrency = (n: number) => n.toLocaleString("en-US") + " ج.م";
 
   const renderTableRows = () => {
     if (!data || data.instructorSummaries.length === 0) {
@@ -1119,28 +1119,25 @@ const AccountantDashboard = memo(() => {
           color="text-teal-600 dark:text-teal-400" 
           bg="bg-teal-50 dark:bg-teal-900/20" 
           border="border-teal-100 dark:border-teal-900/30"
-          href="/instructors"
         />
-          <StatCard 
-            title="استحقاقات التدريب" 
-            value={loading ? 0 : formatCurrency(data?.trainingPayable || 0)} 
-            loading={loading} 
-            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />} 
-            color="text-blue-600 dark:text-blue-400" 
-            bg="bg-blue-50 dark:bg-blue-900/20" 
-            border="border-blue-100 dark:border-blue-900/30"
-            href="/instructors"
-          />
-          <StatCard 
-            title="استحقاقات الاستشارات" 
-            value={loading ? 0 : formatCurrency(data?.consultationPayable || 0)} 
-            loading={loading} 
-            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />} 
-            color="text-purple-600 dark:text-purple-400" 
-            bg="bg-purple-50 dark:bg-purple-900/20" 
-            border="border-purple-100 dark:border-purple-900/30"
-            href="/instructors"
-          />
+        <StatCard 
+          title="استحقاقات التدريب" 
+          value={loading ? 0 : formatCurrency(data?.trainingPayable || 0)} 
+          loading={loading} 
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />} 
+          color="text-blue-600 dark:text-blue-400" 
+          bg="bg-blue-50 dark:bg-blue-900/20" 
+          border="border-blue-100 dark:border-blue-900/30"
+        />
+        <StatCard 
+          title="استحقاقات الاستشارات" 
+          value={loading ? 0 : formatCurrency(data?.consultationPayable || 0)} 
+          loading={loading} 
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />} 
+          color="text-purple-600 dark:text-purple-400" 
+          bg="bg-purple-50 dark:bg-purple-900/20" 
+          border="border-purple-100 dark:border-purple-900/30"
+        />
         <StatCard 
           title="إجمالي الجلسات" 
           value={loading ? 0 : `${data?.totalSessions || 0} جلسة`} 
@@ -1149,7 +1146,6 @@ const AccountantDashboard = memo(() => {
           color="text-amber-600 dark:text-amber-400" 
           bg="bg-amber-50 dark:bg-amber-900/20" 
           border="border-amber-100 dark:border-amber-900/30"
-          href="/hours"
         />
 
         {/* TIME FILTER WIDGET */}
@@ -1449,7 +1445,7 @@ function StatCard({
 }) {
   const content = (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex h-[112px] sm:h-[128px] items-center justify-between gap-4 w-full min-w-0 overflow-hidden contain-layout ${href ? "cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.99] transition-all duration-300" : ""}`}
+      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex min-h-[112px] sm:min-h-[128px] items-center justify-between gap-4 w-full min-w-0 overflow-hidden contain-layout ${href ? "cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.99] transition-all duration-300" : ""}`}
     >
       <div className="space-y-2 min-w-0">
         <p className="text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400 truncate">
@@ -1458,7 +1454,7 @@ function StatCard({
         {loading ? (
           <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700 sm:h-9" />
         ) : (
-          <p className={`text-3xl sm:text-4xl font-extrabold ${color} truncate tabular-nums`}>
+          <p className={`text-2xl sm:text-3xl lg:text-xl xl:text-3xl font-extrabold ${color} tabular-nums leading-tight`}>
             {value}
           </p>
         )}

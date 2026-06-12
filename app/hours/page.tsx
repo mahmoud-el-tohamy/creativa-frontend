@@ -1078,6 +1078,35 @@ function DeleteConfirm({
   );
 }
 
+// ─── Import Modal Helpers ──────────────────────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  programName: "اسم البرنامج",
+  hours: "عدد الساعات",
+  mode: "نمط التدريب",
+  attendeesCount: "عدد الحضور",
+  type: "نوع الجلسة",
+  evaluationReportUrl: "رابط تقرير التقييم",
+  trainingReportUrl: "رابط تقرير التدريب والاستشارات",
+};
+
+const VALUE_LABELS: Record<string, Record<string, string>> = {
+  mode: { online: "أونلاين", offline: "حضوري" },
+  type: {
+    Training: "تدريب",
+    "Awareness Event": "فعالية توعية",
+    Incubation: "احتضان",
+    Consultation: "استشارة",
+  },
+};
+
+const formatValue = (field: string, val: unknown): string => {
+  if (val === null || val === undefined || val === "") return "[فارغ]";
+  if (typeof val === "boolean") return val ? "نعم" : "لا";
+  const value = String(val);
+  return VALUE_LABELS[field]?.[value] ?? value;
+};
+
 // ─── Import Modal ─────────────────────────────────────────────────────────────
 
 interface ConsultationReviewRow {
@@ -1103,9 +1132,25 @@ function ImportModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
     imported: number;
+    updated: number;
     skipped: number;
     errors: Array<{ row: number; errors: string[] }>;
+    updatedDetails?: Array<{
+      row: number;
+      sessionName: string;
+      date: string;
+      instructorName: string;
+      changes: Array<{ field: string; old: unknown; new: unknown }>;
+    }>;
+    unchangedDuplicates?: Array<{
+      row: number;
+      sessionName: string;
+      date: string;
+      instructorName: string;
+    }>;
   } | null>(null);
+  const [showUpdates, setShowUpdates] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -1127,6 +1172,8 @@ function ImportModal({
       setConsultationsToReview(null);
       setWorkbookCache(null);
       setApplyToAllTarget("");
+      setShowUpdates(false);
+      setShowDuplicates(false);
     }
   }, [open]);
 
@@ -1296,15 +1343,27 @@ function ImportModal({
       const res = await hoursAPI.importSessions(file, consultationsMap);
       setResult({
         imported: res.data.imported,
+        updated: res.data.updated,
         skipped: res.data.skipped,
         errors: res.data.errors,
+        updatedDetails: res.data.updatedDetails,
+        unchangedDuplicates: res.data.unchangedDuplicates,
       });
-      if (res.data.imported > 0) {
-        showToast(`تم استيراد ${res.data.imported} جلسة بنجاح`, "success");
+      setShowUpdates(res.data.updated > 0 || Boolean(res.data.updatedDetails?.length));
+      setShowDuplicates(false);
+      if (res.data.imported > 0 || res.data.updated > 0) {
+        showToast(
+          `تم الاستيراد بنجاح: إضافة ${res.data.imported} وتحديث ${res.data.updated} جلسة.`,
+          "success"
+        );
         onImported();
       }
-    } catch (err: any) {
-      const errMsg = err.response?.data?.message || err.message || "فشل الاستيراد";
+    } catch (err: unknown) {
+      const errMsg = axios.isAxiosError(err)
+        ? err.response?.data?.message || err.message
+        : err instanceof Error
+          ? err.message
+          : "فشل الاستيراد";
       showToast(`فشل الاستيراد: ${errMsg}`, "error");
     } finally {
       setLoading(false);
@@ -1316,6 +1375,11 @@ function ImportModal({
     !analyzing &&
     (!consultationsToReview ||
       consultationsToReview.every((r) => r.targetProgram));
+
+  const updatedDetails = result?.updatedDetails ?? [];
+  const missingUpdatedDetailsCount = result
+    ? Math.max(result.updated - updatedDetails.length, 0)
+    : 0;
 
   if (!open) return null;
 
@@ -1553,44 +1617,234 @@ function ImportModal({
           )}
 
           {result && (
-            <div
-              className={`rounded-xl p-4 ${result.skipped > 0 ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800" : "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"}`}
-            >
-              <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                تم استيراد{" "}
-                <span className="text-green-600 dark:text-green-400">
-                  {result.imported}
-                </span>{" "}
-                جلسة
-                {result.skipped > 0 && (
-                  <>
-                    {" "}
-                    — تم تخطي{" "}
-                    <span className="text-amber-600 dark:text-amber-400">
-                      {result.skipped}
-                    </span>{" "}
-                    بسبب أخطاء
-                  </>
-                )}
-              </p>
+            <div className="space-y-4">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200/50 dark:border-green-900/30 rounded-xl p-3">
+                  <span className="block text-xl font-black text-green-600 dark:text-green-400">
+                    {result.imported}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                    جلسات جديدة
+                  </span>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/30 rounded-xl p-3">
+                  <span className="block text-xl font-black text-blue-600 dark:text-blue-400">
+                    {result.updated}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                    جلسات محدثة
+                  </span>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 rounded-xl p-3">
+                  <span className="block text-xl font-black text-amber-600 dark:text-amber-400">
+                    {result.skipped}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                    أخطاء متخطاة
+                  </span>
+                </div>
+              </div>
 
-              {result.errors && result.errors.length > 0 && (
-                <div className="mt-3 max-h-40 overflow-y-auto text-xs space-y-2 custom-scrollbar pr-1">
-                  {result.errors.map((err, i) => (
-                    <div
-                      key={i}
-                      className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900/30"
-                    >
-                      <span className="font-bold block mb-1">
-                        صف {err.row !== -1 ? err.row : "عام"}:
+              {/* Updated details */}
+              {result.updated > 0 && (
+                <div className="border border-blue-200 dark:border-blue-900/50 rounded-xl overflow-hidden bg-white dark:bg-gray-900/40">
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdates(!showUpdates)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-blue-50/80 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors text-right"
+                  >
+                    <span className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                      <span className="flex items-center gap-1.5 font-bold text-sm text-blue-900 dark:text-blue-200">
+                        <svg
+                          className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
+                            showUpdates ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                        الصفوف المحدثة ({result.updated})
                       </span>
-                      <ul className="list-disc list-inside">
-                        {err.errors.map((msg, j) => (
-                          <li key={j}>{msg}</li>
-                        ))}
-                      </ul>
+                      <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300/80">
+                        رقم الصف والقيم التي تغيرت في كل جلسة
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white">
+                      {result.updated} تحديث
+                    </span>
+                  </button>
+
+                  {showUpdates && (
+                    <div className="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-gray-800">
+                      {updatedDetails.map((item, idx) => (
+                        <div key={`${item.row}-${idx}`} className="p-3 space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-md bg-blue-100 px-2 py-1 text-[10px] font-black text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                                  صف {item.row}
+                                </span>
+                                <span className="max-w-full break-words text-sm font-bold text-gray-900 dark:text-white">
+                                  {item.sessionName}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                                <span>{formatDate(item.date)}</span>
+                                <span className="hidden sm:inline">|</span>
+                                <span>{item.instructorName}</span>
+                              </div>
+                            </div>
+                            <span className="w-fit rounded-full bg-gray-100 px-2 py-1 text-[10px] font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                              {item.changes.length} حقول تغيرت
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 border-r-2 border-blue-500 pr-3">
+                            {item.changes.map((ch, cIdx) => {
+                              const oldValue = formatValue(ch.field, ch.old);
+                              const newValue = formatValue(ch.field, ch.new);
+                              return (
+                                <div
+                                  key={cIdx}
+                                  className="rounded-lg border border-gray-200 bg-gray-50/80 p-2 dark:border-gray-800 dark:bg-gray-950/30"
+                                >
+                                  <div className="mb-2 text-[11px] font-black text-blue-700 dark:text-blue-300">
+                                    {FIELD_LABELS[ch.field] || ch.field}
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <div className="min-w-0 rounded-md bg-red-50 px-2 py-1.5 dark:bg-red-950/20">
+                                      <span className="mb-0.5 block text-[10px] font-bold text-red-700 dark:text-red-300">
+                                        قبل
+                                      </span>
+                                      <span
+                                        className="block break-words text-[11px] font-semibold text-red-700 line-through [overflow-wrap:anywhere] dark:text-red-300"
+                                        title={oldValue}
+                                      >
+                                        {oldValue}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0 rounded-md bg-green-50 px-2 py-1.5 dark:bg-green-950/20">
+                                      <span className="mb-0.5 block text-[10px] font-bold text-green-700 dark:text-green-300">
+                                        بعد
+                                      </span>
+                                      <span
+                                        className="block break-words text-[11px] font-black text-green-700 [overflow-wrap:anywhere] dark:text-green-300"
+                                        title={newValue}
+                                      >
+                                        {newValue}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      {missingUpdatedDetailsCount > 0 && (
+                        <div className="m-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-6 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                          تم تحديث {missingUpdatedDetailsCount} صف، لكن الخادم لم يرجع تفاصيل التغييرات لهذه الصفوف. أعد تشغيل الباك إند المحلي ثم جرّب الاستيراد مرة أخرى لعرض القيم قبل وبعد.
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  )}
+                </div>
+              )}
+
+              {/* Unchanged duplicates */}
+              {result.unchangedDuplicates && result.unchangedDuplicates.length > 0 && (
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowDuplicates(!showDuplicates)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-bold text-xs text-gray-800 dark:text-gray-200"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <svg
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          showDuplicates ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2.5"
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                      الصفوف المتكررة والمطابقة بالكامل ({result.unchangedDuplicates.length})
+                    </span>
+                  </button>
+
+                  {showDuplicates && (
+                    <div className="p-3 bg-white dark:bg-gray-900/40 divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto custom-scrollbar space-y-1">
+                      {result.unchangedDuplicates.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="py-1.5 first:pt-0 flex justify-between items-center text-xs"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-black text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                صف {item.row}
+                              </span>
+                              <span className="font-bold text-gray-900 dark:text-white break-words">
+                                {item.sessionName}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                              {item.instructorName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                              {formatDate(item.date)}
+                            </span>
+                            <span className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                              مكرر ومطابق
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Errors list */}
+              {result.errors && result.errors.length > 0 && (
+                <div className="rounded-xl p-4 bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30">
+                  <span className="text-xs font-bold text-red-800 dark:text-red-400 block mb-2">
+                    أخطاء في الصفوف:
+                  </span>
+                  <div className="max-h-40 overflow-y-auto text-xs space-y-2 custom-scrollbar pr-1">
+                    {result.errors.map((err, i) => (
+                      <div
+                        key={i}
+                        className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900/30"
+                      >
+                        <span className="font-bold block mb-1">
+                          صف {err.row !== -1 ? err.row : "عام"}:
+                        </span>
+                        <ul className="list-disc list-inside">
+                          {err.errors.map((msg, j) => (
+                            <li key={j}>{msg}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

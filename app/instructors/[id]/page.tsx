@@ -129,6 +129,12 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
   const { user } = useRequireAuth(["admin", "employee", "accountant"]);
   const [state, dispatch] = useReducer(reducer, initialState);
   const [submitting, setSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Modals state
   const [editData, setEditData] = useState<{ name: string; specializations: string[] }>({ name: "", specializations: [] });
@@ -602,34 +608,36 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                   <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">توزيع الجلسات حسب البرنامج</h3>
                     <div className="h-64 relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={dashboard.programBreakdown}
-                            dataKey="sessions"
-                            nameKey="program"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={90}
-                            stroke="none"
-                          >
-                            {dashboard.programBreakdown.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program] || "#64748b"} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            formatter={(value: any, name: any, props: any) => {
-                              const amountText = canSeeRates && props.payload.totalAmount > 0 
-                                ? ` | ${props.payload.totalAmount} ج` 
-                                : '';
-                              return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      {isMounted && (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={dashboard.programBreakdown}
+                              dataKey="sessions"
+                              nameKey="program"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              stroke="none"
+                            >
+                              {dashboard.programBreakdown.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program] || "#64748b"} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              formatter={(value: any, name: any, props: any) => {
+                                const amountText = canSeeRates && props.payload.totalAmount > 0 
+                                  ? ` | ${props.payload.totalAmount} ج` 
+                                  : '';
+                                return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
                       {/* Center Total */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-3xl font-black text-gray-800 dark:text-gray-200">{dashboard.totalSessions}</span>
