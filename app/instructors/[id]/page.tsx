@@ -522,19 +522,6 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
               </div>
             ) : (
               <div className="flex flex-wrap gap-4">
-                {dashboard.totalHours > 0 && (
-                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-teal-500">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-teal-100 dark:bg-teal-900/30 p-2 rounded-lg">
-                        <svg className="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">إجمالي الساعات</span>
-                    </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">{dashboard.totalHours}</p>
-                  </div>
-                )}
                 {dashboard.totalSessions > 0 && (
                   <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-blue-500">
                     <div className="flex items-center gap-3 mb-2">
@@ -561,19 +548,17 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                     <p className="text-3xl font-black text-gray-900 dark:text-white">{dashboard.totalDays}</p>
                   </div>
                 )}
-                {dashboard.avgAttendeesPerSession > 0 && (
-                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-amber-500">
+                {dashboard.totalHours > 0 && (
+                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-teal-500">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
-                        <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      <div className="bg-teal-100 dark:bg-teal-900/30 p-2 rounded-lg">
+                        <svg className="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">متوسط الحضور</span>
+                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">إجمالي الساعات</span>
                     </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">
-                      {dashboard.avgAttendeesPerSession} <span className="text-sm font-semibold text-gray-400">متدرب/جلسة</span>
-                    </p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">{dashboard.totalHours}</p>
                   </div>
                 )}
                 {dashboard.avgHoursPerSession > 0 && (
@@ -588,6 +573,21 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                     </div>
                     <p className="text-3xl font-black text-gray-900 dark:text-white">
                       {dashboard.avgHoursPerSession} <span className="text-sm font-semibold text-gray-400">س/جلسة</span>
+                    </p>
+                  </div>
+                )}
+                {dashboard.avgAttendeesPerSession > 0 && (
+                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-amber-500">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
+                        <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">متوسط الحضور</span>
+                    </div>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                      {Math.ceil(dashboard.avgAttendeesPerSession)} <span className="text-sm font-semibold text-gray-400">متدرب/جلسة</span>
                     </p>
                   </div>
                 )}
