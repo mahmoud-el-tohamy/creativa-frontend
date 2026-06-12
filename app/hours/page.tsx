@@ -109,7 +109,6 @@ const ALL_PLANNED_PROGRAMS: string[] = [
   "Freelancing coaches",
   "Hackathons / Competitions",
   "Career development",
-  "Incubation",
   "Consultation & Mentorship",
 ];
 
