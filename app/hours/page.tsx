@@ -1303,8 +1303,9 @@ function ImportModal({
         showToast(`تم استيراد ${res.data.imported} جلسة بنجاح`, "success");
         onImported();
       }
-    } catch {
-      showToast("فشل الاستيراد", "error");
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || err.message || "فشل الاستيراد";
+      showToast(`فشل الاستيراد: ${errMsg}`, "error");
     } finally {
       setLoading(false);
     }
