@@ -85,6 +85,13 @@ const PROGRAM_NAMES: ProgramName[] = [
   "Incubation",
 ];
 
+const CONSULTATION_TARGET_PROGRAMS: ProgramName[] = [
+  "Career Development",
+  "Freelancing",
+  "Entrepreneurship",
+  "Acceleration program",
+];
+
 const TIMETABLE_PROGRAMS: TimetableProgram[] = [
   "Entrepreneurship / Technology transfer",
   "Awareness events",
@@ -696,7 +703,7 @@ function SessionModal({
                   setForm((f) => {
                     const nextForm = { ...f };
                     if (val === "Consultation") {
-                      nextForm.programName = PROGRAM_NAMES.includes(
+                      nextForm.programName = CONSULTATION_TARGET_PROGRAMS.includes(
                         f.programName,
                       )
                         ? f.programName
@@ -729,7 +736,7 @@ function SessionModal({
                 </label>
                 <CustomSelect
                   value={form.programName}
-                  options={PROGRAM_NAMES.map((p) => ({ value: p, label: p }))}
+                  options={CONSULTATION_TARGET_PROGRAMS.map((p) => ({ value: p, label: p }))}
                   onChange={(v) =>
                     setForm((f) => ({ ...f, programName: v as ProgramName }))
                   }
@@ -1467,7 +1474,7 @@ function ImportModal({
                       className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     >
                       <option value="">اختر برنامج</option>
-                      {PROGRAM_NAMES.map((p) => (
+                      {CONSULTATION_TARGET_PROGRAMS.map((p) => (
                         <option key={p} value={p}>
                           {p}
                         </option>
@@ -1505,7 +1512,7 @@ function ImportModal({
                         className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                       >
                         <option value="">اختر برنامج</option>
-                        {PROGRAM_NAMES.map((p) => (
+                        {CONSULTATION_TARGET_PROGRAMS.map((p) => (
                           <option key={p} value={p}>
                             {p}
                           </option>
