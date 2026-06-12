@@ -129,6 +129,12 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
   const { user } = useRequireAuth(["admin", "employee", "accountant"]);
   const [state, dispatch] = useReducer(reducer, initialState);
   const [submitting, setSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Modals state
   const [editData, setEditData] = useState<{ name: string; specializations: string[] }>({ name: "", specializations: [] });
@@ -522,19 +528,6 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
               </div>
             ) : (
               <div className="flex flex-wrap gap-4">
-                {dashboard.totalHours > 0 && (
-                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-teal-500">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-teal-100 dark:bg-teal-900/30 p-2 rounded-lg">
-                        <svg className="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">إجمالي الساعات</span>
-                    </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">{dashboard.totalHours}</p>
-                  </div>
-                )}
                 {dashboard.totalSessions > 0 && (
                   <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-blue-500">
                     <div className="flex items-center gap-3 mb-2">
@@ -561,19 +554,17 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                     <p className="text-3xl font-black text-gray-900 dark:text-white">{dashboard.totalDays}</p>
                   </div>
                 )}
-                {dashboard.avgAttendeesPerSession > 0 && (
-                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-amber-500">
+                {dashboard.totalHours > 0 && (
+                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-teal-500">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
-                        <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      <div className="bg-teal-100 dark:bg-teal-900/30 p-2 rounded-lg">
+                        <svg className="w-5 h-5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">متوسط الحضور</span>
+                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">إجمالي الساعات</span>
                     </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">
-                      {dashboard.avgAttendeesPerSession} <span className="text-sm font-semibold text-gray-400">متدرب/جلسة</span>
-                    </p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">{dashboard.totalHours}</p>
                   </div>
                 )}
                 {dashboard.avgHoursPerSession > 0 && (
@@ -591,6 +582,21 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                     </p>
                   </div>
                 )}
+                {dashboard.avgAttendeesPerSession > 0 && (
+                  <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-amber-500">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
+                        <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-gray-500 dark:text-gray-400 font-bold text-sm">متوسط الحضور</span>
+                    </div>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                      {Math.ceil(dashboard.avgAttendeesPerSession)} <span className="text-sm font-semibold text-gray-400">متدرب/جلسة</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -602,34 +608,36 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                   <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">توزيع الجلسات حسب البرنامج</h3>
                     <div className="h-64 relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={dashboard.programBreakdown}
-                            dataKey="sessions"
-                            nameKey="program"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={90}
-                            stroke="none"
-                          >
-                            {dashboard.programBreakdown.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program] || "#64748b"} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            formatter={(value: any, name: any, props: any) => {
-                              const amountText = canSeeRates && props.payload.totalAmount > 0 
-                                ? ` | ${props.payload.totalAmount} ج` 
-                                : '';
-                              return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      {isMounted && (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={dashboard.programBreakdown}
+                              dataKey="sessions"
+                              nameKey="program"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              stroke="none"
+                            >
+                              {dashboard.programBreakdown.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program] || "#64748b"} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              formatter={(value: any, name: any, props: any) => {
+                                const amountText = canSeeRates && props.payload.totalAmount > 0 
+                                  ? ` | ${props.payload.totalAmount} ج` 
+                                  : '';
+                                return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
                       {/* Center Total */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-3xl font-black text-gray-800 dark:text-gray-200">{dashboard.totalSessions}</span>

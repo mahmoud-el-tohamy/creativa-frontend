@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   getBlacklist,
   addToBlacklist,
@@ -41,6 +41,18 @@ export default function BlacklistPage() {
   const [activeTab, setActiveTab] = useState<"blacklisted" | "warnings">(
     "blacklisted",
   );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "warnings") {
+        setTimeout(() => setActiveTab("warnings"), 0);
+      } else if (tabParam === "blacklisted") {
+        setTimeout(() => setActiveTab("blacklisted"), 0);
+      }
+    }
+  }, []);
 
   const [filters, dispatchFilters] = useTableFilters();
   const [currentPage, setCurrentPage] = useState(1);

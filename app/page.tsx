@@ -518,10 +518,10 @@ function AdminEmployeeDashboard() {
       </div>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="إجمالي المدرجين" value={totalCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-900/20" border="border-indigo-100 dark:border-indigo-900/30" />
-        <StatCard title="الإنذارات النشطة" value={warningsCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />} color="text-amber-600 dark:text-amber-400" bg="bg-amber-50 dark:bg-amber-900/20" border="border-amber-100 dark:border-amber-900/30" />
-        <StatCard title="مسجلين بالبلاك ليست" value={totalCount - warningsCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />} color="text-red-600 dark:text-red-400" bg="bg-red-50 dark:bg-red-900/20" border="border-red-100 dark:border-red-900/30" />
-        <StatCard title="إضافات هذا الشهر" value={thisMonthCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/20" border="border-blue-100 dark:border-blue-900/30" />
+        <StatCard title="إجمالي المدرجين" value={totalCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-900/20" border="border-indigo-100 dark:border-indigo-900/30" href="/blacklist?tab=blacklisted" />
+        <StatCard title="الإنذارات النشطة" value={warningsCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />} color="text-amber-600 dark:text-amber-400" bg="bg-amber-50 dark:bg-amber-900/20" border="border-amber-100 dark:border-amber-900/30" href="/blacklist?tab=warnings" />
+        <StatCard title="مسجلين بالبلاك ليست" value={totalCount - warningsCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />} color="text-red-600 dark:text-red-400" bg="bg-red-50 dark:bg-red-900/20" border="border-red-100 dark:border-red-900/30" href="/blacklist?tab=blacklisted" />
+        <StatCard title="إضافات هذا الشهر" value={thisMonthCount} loading={loading} icon={<path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/20" border="border-blue-100 dark:border-blue-900/30" href="/blacklist?tab=blacklisted" />
       </section>
 
       {/* ━━━ ADDED: Fiscal Year Selector ━━━ */}
@@ -572,10 +572,10 @@ function AdminEmployeeDashboard() {
 
       {/* ━━━ ADDED: Training Stats Cards Row ━━━ */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="إجمالي أيام التدريب" value={trainingStats?.totalTrainingDays || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} color="text-teal-600 dark:text-teal-400" bg="bg-teal-50 dark:bg-teal-900/20" border="border-teal-100 dark:border-teal-900/30" />
-        <StatCard title="إجمالي الجلسات" value={trainingStats?.totalSessions || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/20" border="border-blue-100 dark:border-blue-900/30" />
-        <StatCard title="إجمالي المتدربين" value={trainingStats?.totalAttendees || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />} color="text-purple-600 dark:text-purple-400" bg="bg-purple-50 dark:bg-purple-900/20" border="border-purple-100 dark:border-purple-900/30" />
-        <StatCard title="إجمالي الساعات" value={trainingStatsLoading ? 0 : `${trainingStats?.totalHours || 0} س`} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />} color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-900/20" border="border-green-100 dark:border-green-900/30" />
+        <StatCard title="إجمالي أيام التدريب" value={trainingStats?.totalTrainingDays || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} color="text-teal-600 dark:text-teal-400" bg="bg-teal-50 dark:bg-teal-900/20" border="border-teal-100 dark:border-teal-900/30" href="/hours" />
+        <StatCard title="إجمالي الجلسات" value={trainingStats?.totalSessions || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/20" border="border-blue-100 dark:border-blue-900/30" href="/hours" />
+        <StatCard title="إجمالي المتدربين" value={trainingStats?.totalAttendees || 0} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />} color="text-purple-600 dark:text-purple-400" bg="bg-purple-50 dark:bg-purple-900/20" border="border-purple-100 dark:border-purple-900/30" href="/hours" />
+        <StatCard title="إجمالي الساعات" value={trainingStatsLoading ? 0 : `${trainingStats?.totalHours || 0} س`} loading={trainingStatsLoading} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />} color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-900/20" border="border-green-100 dark:border-green-900/30" href="/hours" />
       </section>
 
       {/* ━━━ ADDED: Charts Row 1: Program Performance ━━━ */}
@@ -1025,7 +1025,7 @@ const AccountantDashboard = memo(() => {
     };
   }, [period, startDate, endDate]);
 
-  const formatCurrency = (n: number) => n.toLocaleString("ar-EG") + " ج.م";
+  const formatCurrency = (n: number) => n.toLocaleString("en-US") + " ج.م";
 
   const renderTableRows = () => {
     if (!data || data.instructorSummaries.length === 0) {
@@ -1120,24 +1120,24 @@ const AccountantDashboard = memo(() => {
           bg="bg-teal-50 dark:bg-teal-900/20" 
           border="border-teal-100 dark:border-teal-900/30"
         />
-          <StatCard 
-            title="استحقاقات التدريب" 
-            value={loading ? 0 : formatCurrency(data?.trainingPayable || 0)} 
-            loading={loading} 
-            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />} 
-            color="text-blue-600 dark:text-blue-400" 
-            bg="bg-blue-50 dark:bg-blue-900/20" 
-            border="border-blue-100 dark:border-blue-900/30"
-          />
-          <StatCard 
-            title="استحقاقات الاستشارات" 
-            value={loading ? 0 : formatCurrency(data?.consultationPayable || 0)} 
-            loading={loading} 
-            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />} 
-            color="text-purple-600 dark:text-purple-400" 
-            bg="bg-purple-50 dark:bg-purple-900/20" 
-            border="border-purple-100 dark:border-purple-900/30"
-          />
+        <StatCard 
+          title="استحقاقات التدريب" 
+          value={loading ? 0 : formatCurrency(data?.trainingPayable || 0)} 
+          loading={loading} 
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />} 
+          color="text-blue-600 dark:text-blue-400" 
+          bg="bg-blue-50 dark:bg-blue-900/20" 
+          border="border-blue-100 dark:border-blue-900/30"
+        />
+        <StatCard 
+          title="استحقاقات الاستشارات" 
+          value={loading ? 0 : formatCurrency(data?.consultationPayable || 0)} 
+          loading={loading} 
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />} 
+          color="text-purple-600 dark:text-purple-400" 
+          bg="bg-purple-50 dark:bg-purple-900/20" 
+          border="border-purple-100 dark:border-purple-900/30"
+        />
         <StatCard 
           title="إجمالي الجلسات" 
           value={loading ? 0 : `${data?.totalSessions || 0} جلسة`} 
@@ -1432,6 +1432,7 @@ function StatCard({
   bg,
   border,
   loading = false,
+  href,
 }: {
   title: string;
   value: string | number;
@@ -1440,10 +1441,11 @@ function StatCard({
   bg: string;
   border: string;
   loading?: boolean;
+  href?: string;
 }) {
-  return (
+  const content = (
     <div
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex h-[112px] sm:h-[128px] items-center justify-between gap-4 w-full min-w-0 overflow-hidden contain-layout"
+      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 sm:p-6 flex min-h-[112px] sm:min-h-[128px] items-center justify-between gap-4 w-full min-w-0 overflow-hidden contain-layout ${href ? "cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.99] transition-all duration-300" : ""}`}
     >
       <div className="space-y-2 min-w-0">
         <p className="text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400 truncate">
@@ -1452,7 +1454,7 @@ function StatCard({
         {loading ? (
           <div className="h-8 w-20 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700 sm:h-9" />
         ) : (
-          <p className={`text-3xl sm:text-4xl font-extrabold ${color} truncate tabular-nums`}>
+          <p className={`text-2xl sm:text-3xl lg:text-xl xl:text-3xl font-extrabold ${color} tabular-nums leading-tight`}>
             {value}
           </p>
         )}
@@ -1472,4 +1474,14 @@ function StatCard({
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block w-full">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }
