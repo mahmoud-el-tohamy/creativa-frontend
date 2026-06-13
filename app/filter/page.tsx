@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useMemo } from "react";
 import { readExcel, downloadExcel, Person } from "@/lib/excel";
-import { getBlacklistIds } from "@/lib/blacklist";
+import { bulkCheckBlacklist } from "@/lib/blacklist";
 import RouteGuard from "@/components/RouteGuard";
 
 export default function FilterPage() {
@@ -48,15 +48,17 @@ export default function FilterPage() {
         return;
       }
 
-      // 2. Fetch blacklist
-      const blacklistIds = await getBlacklistIds();
+      // 2. Fetch blacklist statuses for candidates in bulk
+      const nationalIds = allCandidates.map(c => c.nationalId).filter(Boolean);
+      const blacklistStatusMap = await bulkCheckBlacklist(nationalIds);
 
-      // 3. Filter candidates
+      // 3. Filter candidates (only block status === "blacklisted")
       const clean: Person[] = [];
       const blacklisted: Person[] = [];
 
       allCandidates.forEach(candidate => {
-        if (blacklistIds.has(candidate.nationalId)) {
+        const checkResult = blacklistStatusMap[candidate.nationalId];
+        if (checkResult && checkResult.status === "blacklisted") {
           blacklisted.push(candidate);
         } else {
           clean.push(candidate);
