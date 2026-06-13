@@ -35,44 +35,74 @@ function getCurrentFiscalYear() {
   return `FY${y - 1}-${y}`;
 }
 
+const TRACK_ENGLISH_LABELS: Record<string, string> = {
+  // Arabic values from database (blacklist tracks)
+  "ريادة أعمال": "Entrepreneurship",
+  "عمل حر": "Freelancing",
+  "تطوير مهني": "Career Development",
+  "نشر وعي": "Awareness Event",
+  "استشارات": "Consultation & Mentorship",
+  "هاكاثون ومسابقات": "Hackathons / Competitions",
+  "مسرعة أعمال": "Acceleration Program",
+  "تكنولوجيا": "Tech",
+  "تكنولوجي": "Tech",
+  "احتضان": "Incubation",
+
+  // Long/variant English values from database/API
+  "Entrepreneurship / Technology transfer": "Entrepreneurship",
+  "Freelancing coaches": "Freelancing",
+  "Career development": "Career Development",
+  "Awareness events": "Awareness Event",
+  "Awareness event": "Awareness Event",
+  "Acceleration program": "Acceleration Program",
+  "Acceleration Program": "Acceleration Program",
+  "Hackathons / Competitions": "Hackathons / Competitions",
+  "Incubation": "Incubation",
+  "Consultation": "Consultation & Mentorship",
+  "Consultation & Mentorship": "Consultation & Mentorship",
+  "Tech": "Tech"
+};
+
+const getEnglishTrackName = (name: string): string => {
+  if (!name) return name;
+  const trimmed = name.trim();
+  return TRACK_ENGLISH_LABELS[trimmed] || trimmed;
+};
+
 const PROGRAM_COLORS: Record<string, string> = {
   "Entrepreneurship": "#1D9E75",
   "Career Development": "#7C3AED",
   "Freelancing": "#F59E0B",
-  "Acceleration program": "#6B7280",
+  "Acceleration Program": "#6B7280",
   "Hackathons / Competitions": "#EF4444",
-  "Awareness event": "#EAB308",
+  "Awareness Event": "#EAB308",
   "Incubation": "#9333EA",
   "Tech": "#0284C7",
   "Consultation & Mentorship": "#db2777"
 };
 
-const PROGRAM_LABELS: Record<string, string> = {
-  "Entrepreneurship / Technology transfer": "ريادة أعمال",
-  "Career development": "تطوير مهني",
-  "Freelancing coaches": "عمل حر",
-  "Acceleration program": "مسرعة أعمال",
-  "Hackathons / Competitions": "هاكاثون ومسابقات",
-  "Awareness events": "نشر وعي",
-  "Incubation": "احتضان",
-  "Consultation": "استشارات"
-};
+
 
 // Removed client-side buildChartData logic. Server now handles it via /api/dashboard/stats
 
 function buildTracksChartData(entries: BlacklistEntry[]) {
   const trackCounts: Record<string, number> = {};
   entries.forEach(entry => {
+    const uniqueTracks = new Set<string>();
     if (entry.absences) {
       entry.absences.forEach(a => {
-        if (!trackCounts[a.track]) trackCounts[a.track] = 0;
-        trackCounts[a.track]++;
+        if (a.track && a.track !== "غير محدد" && a.track !== "إضافة يدوية") {
+          uniqueTracks.add(getEnglishTrackName(a.track));
+        }
       });
     }
+    uniqueTracks.forEach(t => {
+      if (!trackCounts[t]) trackCounts[t] = 0;
+      trackCounts[t]++;
+    });
   });
 
   return Object.keys(trackCounts)
-    .filter(t => t !== "غير محدد" && t !== "إضافة يدوية")
     .map(t => ({ name: t, value: trackCounts[t] }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5); // top 5 tracks
@@ -295,7 +325,7 @@ function AdminEmployeeDashboard() {
           const sortedData = statsResponse.blacklist || [];
           setData(sortedData);
 
-          setTotalCount(statsResponse.users?.total || 0);
+          setTotalCount(sortedData.length);
           setWarningsCount(sortedData.filter((e: BlacklistEntry) => e.status === "warning").length);
           
           const now = new Date();
@@ -309,8 +339,8 @@ function AdminEmployeeDashboard() {
 
           const initialFiltered = filterEntriesByTimeRange(sortedData, "monthly");
           setTracksData(buildTracksChartData(initialFiltered));
-          setWarningsTrackData(buildTracksChartData(initialFiltered.filter((e: BlacklistEntry) => e.status === "warning")));
-          setBlacklistTrackData(buildTracksChartData(initialFiltered.filter((e: BlacklistEntry) => e.status === "blacklisted")));
+          setWarningsTrackData(buildTracksChartData(sortedData.filter((e: BlacklistEntry) => e.status === "warning")));
+          setBlacklistTrackData(buildTracksChartData(sortedData.filter((e: BlacklistEntry) => e.status === "blacklisted")));
         }
       } catch (err) {
         console.error(err);
@@ -585,22 +615,28 @@ function AdminEmployeeDashboard() {
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">إجمالي أيام التدريب موزعة على البرامج</p>
           <div className="w-full" style={{ height: Math.max(250, (trainingStats?.programDays?.length || 0) * 50 + 50) }} dir="ltr">
             <ChartContainer loading={trainingStatsLoading}>
-              {({ height }) => (
-                <ResponsiveContainer width="100%" height={height}>
-                  <BarChart data={trainingStats?.programDays || []} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
-                    <YAxis dataKey="program" type="category" tickFormatter={(val) => PROGRAM_LABELS[val as string] || val} width={90} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 14, fontWeight: 700 }} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                    <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
-                      {trainingStats?.programDays.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program as string] || "#94a3b8"} />
-                      ))}
-                      <LabelList dataKey="totalDays" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              {({ height }) => {
+                const programDaysData = (trainingStats?.programDays || []).map(item => ({
+                  ...item,
+                  program: getEnglishTrackName(item.program)
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <BarChart data={programDaysData} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
+                      <YAxis dataKey="program" type="category" width={160} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 700 }} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                      <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
+                        {programDaysData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program as string] || "#94a3b8"} />
+                        ))}
+                        <LabelList dataKey="totalDays" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              }}
             </ChartContainer>
           </div>
         </div>
@@ -874,11 +910,13 @@ function AdminEmployeeDashboard() {
             <div className="flex-1 w-full min-h-[200px]">
               <ChartContainer loading={loading}>
                 {({ width, height }) => (
-                  <BarChart width={width} height={height} data={warningsTrackData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <BarChart width={width} height={height} data={warningsTrackData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} className="dark:stroke-gray-700" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#92400e', fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip cursor={{ fill: 'rgba(245, 158, 11, 0.1)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="value" name="عدد الإنذارات" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Tooltip cursor={{ fill: 'rgba(245, 158, 11, 0.1)' }} content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="عدد الإنذارات" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                      <LabelList dataKey="value" position="top" fill="#d97706" fontSize={12} fontWeight={700} />
+                    </Bar>
                   </BarChart>
                 )}
               </ChartContainer>
@@ -903,11 +941,13 @@ function AdminEmployeeDashboard() {
             <div className="flex-1 w-full min-h-[200px]">
               <ChartContainer loading={loading}>
                 {({ width, height }) => (
-                  <BarChart width={width} height={height} data={blacklistTrackData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <BarChart width={width} height={height} data={blacklistTrackData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} className="dark:stroke-gray-700" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#991b1b', fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.1)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="value" name="مضافين للبلاك ليست" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.1)' }} content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="مضافين للبلاك ليست" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                      <LabelList dataKey="value" position="top" fill="#dc2626" fontSize={12} fontWeight={700} />
+                    </Bar>
                   </BarChart>
                 )}
               </ChartContainer>
@@ -1300,7 +1340,7 @@ const AccountantDashboard = memo(() => {
       </section>
 
       {/* SECTION 4 — Charts Row */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <section className="grid grid-cols-1 gap-8">
         {/* CHART A: Monthly Trend */}
         <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">الاستحقاق الشهري</h2>
@@ -1319,7 +1359,7 @@ const AccountantDashboard = memo(() => {
                   <ResponsiveContainer width="100%" height={height}>
                     <ComposedChart data={data.monthlyTrend} margin={{ top: 20, right: 30, left: 30, bottom: 20 }} className="dir-ltr">
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} dy={10} />
+                      <XAxis dataKey="month" interval={0} axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 600 }} dy={10} />
                       <YAxis yAxisId="left" tickMargin={10} width={50} axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} tickCount={6} />
                       <YAxis yAxisId="right" tickMargin={10} width={60} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#14b8a6', fontSize: 13, fontWeight: 600 }} tickCount={6} />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
@@ -1348,12 +1388,15 @@ const AccountantDashboard = memo(() => {
                     </div>
                   );
                 }
-                const pieData = data.programBreakdown.map(p => ({
-                  name: p.program,
-                  value: p.totalHours,
-                  fill: PROGRAM_COLORS[p.program] || "#64748b",
-                  sessions: p.totalSessions
-                }));
+                const pieData = data.programBreakdown.map(p => {
+                  const engName = getEnglishTrackName(p.program);
+                  return {
+                    name: engName,
+                    value: p.totalHours,
+                    fill: PROGRAM_COLORS[engName] || "#64748b",
+                    sessions: p.totalSessions
+                  };
+                });
                 return (
                   <ResponsiveContainer width="100%" height={height}>
                     <PieChart>

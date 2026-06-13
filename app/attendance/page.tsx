@@ -128,8 +128,16 @@ export default function Home() {
       }
 
       // 2. المقارنة لاستخراج الغائبين
-      const registeredIds = new Set(registeredPeople.map((p) => p.nationalId));
-      const attendedIds = new Set(attendedPeople.map((p) => p.nationalId));
+      const registeredIds = new Set(
+        registeredPeople
+          .filter((p) => validateNationalId(p.nationalId).isValid)
+          .map((p) => p.nationalId)
+      );
+      const attendedIds = new Set(
+        attendedPeople
+          .filter((p) => validateNationalId(p.nationalId).isValid)
+          .map((p) => p.nationalId)
+      );
       
       const absentees = registeredPeople.filter((p) => !attendedIds.has(p.nationalId));
       const unregisteredAttendees = attendedPeople.filter((p) => !registeredIds.has(p.nationalId));
@@ -295,6 +303,7 @@ export default function Home() {
         targetedAttendees={reviewTargetedAttendees}
         bulkCheckResults={reviewBulkResults}
         isProcessing={loading}
+        invalidEntries={intermediateProcessData?.invalidEntries}
       />
       {/* Swap Detection Modal */}
       {swapModal.isOpen && (

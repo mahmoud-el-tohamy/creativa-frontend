@@ -32,7 +32,7 @@ interface IntermediateMultiDayData {
   passedList: MultiDayAttendanceSummaryRow[];
   newBlacklistEntriesUI: MultiDayAttendanceSummaryRow[];
   totalFailedCount: number;
-  invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[];
+  invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number; rowNumber?: number }[];
   skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[];
 }
 
@@ -52,6 +52,14 @@ export default function MultiDayAttendance() {
     null,
   );
   const [isParsingFile, setIsParsingFile] = useState(false);
+
+  // Registered Users Sheet states
+  const [regFileInfo, setRegFileInfo] = useState<{ name: string; size: number } | null>(null);
+  const [regParsedRows, setRegParsedRows] = useState<MultiDayAttendancePerson[] | null>(
+    null,
+  );
+  const [isParsingRegFile, setIsParsingRegFile] = useState(false);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
@@ -95,10 +103,10 @@ export default function MultiDayAttendance() {
       const rows = await readMultiDayAttendanceExcel(selectedFile);
       setFileInfo({ name: selectedFile.name, size: selectedFile.size });
       setParsedRows(rows);
-      showToast(`تم تحميل الملف بنجاح. تم العثور على ${rows.length} سجل.`, "success");
+      showToast(`تم تحميل ملف الحضور بنجاح. تم العثور على ${rows.length} سجل.`, "success");
     } catch (error: unknown) {
       console.error(error);
-      showToast(getErrorMessage(error, "تعذر قراءة الملف."), "error");
+      showToast(getErrorMessage(error, "تعذر قراءة ملف الحضور."), "error");
     } finally {
       setIsParsingFile(false);
     }
@@ -110,12 +118,42 @@ export default function MultiDayAttendance() {
     resetResults();
   };
 
+  const handleRegFileSelection = async (selectedFile: File) => {
+    if (!isExcelFile(selectedFile)) {
+      showToast("يُسمح فقط برفع ملفات Excel أو CSV.", "error");
+      return;
+    }
+
+    setIsParsingRegFile(true);
+    setRegFileInfo(null);
+    setRegParsedRows(null);
+    resetResults();
+
+    try {
+      const rows = await readMultiDayAttendanceExcel(selectedFile);
+      setRegFileInfo({ name: selectedFile.name, size: selectedFile.size });
+      setRegParsedRows(rows);
+      showToast(`تم تحميل ملف المسجلين بنجاح. تم العثور على ${rows.length} سجل.`, "success");
+    } catch (error: unknown) {
+      console.error(error);
+      showToast(getErrorMessage(error, "تعذر قراءة ملف المسجلين."), "error");
+    } finally {
+      setIsParsingRegFile(false);
+    }
+  };
+
+  const clearRegFile = () => {
+    setRegFileInfo(null);
+    setRegParsedRows(null);
+    resetResults();
+  };
+
   const handleProcess = async () => {
     const totalDays = Number(totalTrainingDays);
     const minimumDays = Number(minimumAttendanceDays);
 
-    if (!fileInfo || !parsedRows) {
-      showToast("الرجاء رفع ملف الحضور أولاً.", "error");
+    if (!fileInfo || !parsedRows || !regFileInfo || !regParsedRows) {
+      showToast("الرجاء رفع كشف الحضور وشيت المسجلين أولاً.", "error");
       return;
     }
 
@@ -144,19 +182,52 @@ export default function MultiDayAttendance() {
 
     try {
       const grouped = new Map<string, MultiDayAttendanceSummaryRow>();
+      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number; rowNumber?: number }[] = [];
 
-      parsedRows.forEach((person) => {
-        const existing = grouped.get(person.id);
-
-        if (existing) {
-          existing.attendedDays += 1;
-          return;
+      // Step 1: Initialize list from Registered Users (base no-shows with 0 days attended)
+      regParsedRows.forEach((person) => {
+        if (person.invalidReason) {
+          invalidBlacklistEntries.push({
+            name: person.name,
+            nationalId: person.nationalId,
+            reason: person.invalidReason,
+            attendedDays: 0,
+            rowNumber: person.rowNumber,
+          });
+        } else {
+          grouped.set(person.nationalId, {
+            ...person,
+            attendedDays: 0,
+          });
         }
+      });
 
-        grouped.set(person.id, {
-          ...person,
-          attendedDays: 1,
-        });
+      // Step 2: Increment attendedDays using Attendance list
+      parsedRows.forEach((person) => {
+        if (person.invalidReason) {
+          const exists = invalidBlacklistEntries.some(e => e.nationalId === person.nationalId && e.name === person.name);
+          if (!exists) {
+            invalidBlacklistEntries.push({
+              name: person.name,
+              nationalId: person.nationalId,
+              reason: person.invalidReason,
+              attendedDays: 1,
+              rowNumber: person.rowNumber,
+            });
+          }
+        } else {
+          const existing = grouped.get(person.nationalId);
+
+          if (existing) {
+            existing.attendedDays += 1;
+          } else {
+            // Edge case: someone is in the attendance sheet but not in the registered sheet
+            grouped.set(person.nationalId, {
+              ...person,
+              attendedDays: 1,
+            });
+          }
+        }
       });
 
       const summaryRows = Array.from(grouped.values()).sort((a, b) =>
@@ -172,7 +243,6 @@ export default function MultiDayAttendance() {
       const existingBlacklistIds =
         failedList.length > 0 ? await getBlacklistIds() : new Set<string>();
 
-      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[] = [];
       const skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[] = [];
       const newBlacklistEntriesUI: typeof failedList = [];
 
@@ -190,16 +260,7 @@ export default function MultiDayAttendance() {
 
       const validFailedListToBackend: typeof failedList = [];
       failedList.forEach((person) => {
-        if (person.invalidReason) {
-          invalidBlacklistEntries.push({
-            name: person.name,
-            nationalId: person.nationalId,
-            reason: person.invalidReason,
-            attendedDays: person.attendedDays,
-          });
-        } else {
-          validFailedListToBackend.push(person);
-        }
+        validFailedListToBackend.push(person);
       });
 
       const intermediateData = {
@@ -364,6 +425,7 @@ export default function MultiDayAttendance() {
           targetedAttendees={reviewTargetedAttendees}
           bulkCheckResults={reviewBulkResults}
           isProcessing={isProcessing}
+          invalidEntries={intermediateProcessData?.invalidBlacklistEntries}
         />
 
         <div className="mx-auto max-w-6xl space-y-8">
@@ -418,14 +480,37 @@ export default function MultiDayAttendance() {
                 </label>
               </div>
 
-              <div className="mt-6">
-                <SingleFileUploadArea
-                  fileInfo={fileInfo}
-                  parsedRowsCount={parsedRows?.length ?? 0}
-                  isParsing={isParsingFile}
-                  onFileSelect={handleFileSelection}
-                  onClear={clearFile}
-                />
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    شيت جميع المسجلين (Registered Users Sheet) *
+                  </span>
+                  <SingleFileUploadArea
+                    id="multi-day-registered-file"
+                    label="اسحب وأفلت ملف المسجلين هنا"
+                    placeholder="أو اضغط لاختيار ملف Excel واحد"
+                    fileInfo={regFileInfo}
+                    parsedRowsCount={regParsedRows?.length ?? 0}
+                    isParsing={isParsingRegFile}
+                    onFileSelect={handleRegFileSelection}
+                    onClear={clearRegFile}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <span className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    شيت حضور المتدربين (Attendance Sheet) *
+                  </span>
+                  <SingleFileUploadArea
+                    id="multi-day-attendance-file"
+                    label="اسحب وأفلت ملف الحضور هنا"
+                    placeholder="أو اضغط لاختيار ملف Excel واحد"
+                    fileInfo={fileInfo}
+                    parsedRowsCount={parsedRows?.length ?? 0}
+                    isParsing={isParsingFile}
+                    onFileSelect={handleFileSelection}
+                    onClear={clearFile}
+                  />
+                </div>
               </div>
 
               <div className="mt-6 flex flex-col sm:flex-row items-center gap-4">
@@ -466,9 +551,9 @@ export default function MultiDayAttendance() {
 
                 <button
                   onClick={handleProcess}
-                  disabled={isProcessing || isParsingFile || !fileInfo || !parsedRows}
+                  disabled={isProcessing || isParsingFile || isParsingRegFile || !fileInfo || !parsedRows || !regFileInfo || !regParsedRows}
                   className={`rounded-full px-8 py-3 text-lg font-bold text-white shadow-md transition-all duration-300 ${
-                    isProcessing || isParsingFile || !fileInfo || !parsedRows
+                    isProcessing || isParsingFile || isParsingRegFile || !fileInfo || !parsedRows || !regFileInfo || !regParsedRows
                       ? "cursor-not-allowed bg-gray-400"
                       : "bg-blue-600 hover:scale-[1.02] hover:bg-blue-700"
                   }`}
@@ -490,10 +575,14 @@ export default function MultiDayAttendance() {
                 طريقة العمل
               </h2>
               <div className="mt-4 space-y-4 text-sm leading-7 text-gray-600 dark:text-gray-300">
-                <p>يتم تجميع السجلات حسب عمود ID.</p>
-                <p>عدد مرات ظهور كل ID يمثل عدد أيام الحضور الفعلية.</p>
-                <p>من لم يصل إلى الحد الأدنى يُضاف تلقائيًا إلى البلاك ليست.</p>
-                <p>الناجحون فقط يظهرون بالأسفل مع إمكانية تنزيل Clean Sheet جديد.</p>
+                <p>1. <strong>شيت المسجلين</strong>: يحتوي على قائمة بجميع المتدربين المسجلين في البرنامج.</p>
+                <p>2. <strong>شيت الحضور</strong>: يحتوي على سجلات التحضير اليومية للمتدربين.</p>
+                <p>3. <strong>المقارنة والمعالجة</strong>:</p>
+                <ul className="list-disc list-inside space-y-2 pr-2">
+                  <li>من لم يظهر اسمه نهائياً في شيت الحضور يُعتبر &quot;غائب تماماً&quot; (0 أيام حضور) ويُضاف للإنذارات.</li>
+                  <li>من حضر أياماً أقل من الحد الأدنى المطلوب يُعتبر &quot;حضور غير كافٍ&quot; ويُضاف للإنذارات.</li>
+                  <li>الناجحون هم من استوفوا الحد الأدنى للحضور فما فوق.</li>
+                </ul>
               </div>
             </div>
           </section>
@@ -774,12 +863,18 @@ function StatCard({
 }
 
 function SingleFileUploadArea({
+  id,
+  label,
+  placeholder,
   fileInfo,
   parsedRowsCount,
   isParsing,
   onFileSelect,
   onClear,
 }: {
+  id: string;
+  label: string;
+  placeholder: string;
   fileInfo: { name: string; size: number } | null;
   parsedRowsCount: number;
   isParsing: boolean;
@@ -833,8 +928,8 @@ function SingleFileUploadArea({
     >
       <input
         ref={inputRef}
-        id="multi-day-attendance-file"
-        name="multiDayAttendanceFile"
+        id={id}
+        name={id}
         type="file"
         className="hidden"
         accept=".xlsx,.xls,.csv"
@@ -926,10 +1021,10 @@ function SingleFileUploadArea({
           </div>
           <div>
             <p className="text-xl font-bold text-gray-800 dark:text-gray-200">
-              اسحب وأفلت ملف الحضور هنا
+              {label}
             </p>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
-              أو اضغط لاختيار ملف Excel واحد
+              {placeholder}
             </p>
           </div>
         </div>

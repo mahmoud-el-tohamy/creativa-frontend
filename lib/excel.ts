@@ -6,6 +6,7 @@ export interface Person {
   nationalId: string;
   phone?: string;
   email?: string;
+  rowNumber?: number;
 }
 
 export interface MultiDayAttendancePerson {
@@ -13,6 +14,7 @@ export interface MultiDayAttendancePerson {
   id: string;
   nationalId: string;
   invalidReason?: string;
+  rowNumber?: number;
 }
 
 export interface MultiDayAttendanceSummaryRow extends MultiDayAttendancePerson {
@@ -62,13 +64,14 @@ export async function readExcel(file: File): Promise<Person[]> {
     // أول سطر هيدر، باقي الصفوف بيانات
     const people: Person[] = rows
       .slice(1)
-      .map((row) => ({
+      .map((row, index) => ({
         name: String(row[0] || "").trim(),
         nationalId: toEnglishDigits(String(row[1] || "")).replace(/\s+/g, ""),
         phone: row[2] ? String(row[2]) : undefined,
         email: row[3] ? String(row[3]) : undefined,
+        rowNumber: index + 2,
       }))
-      .filter((p) => p.name && p.nationalId);
+      .filter((p) => p.name || p.nationalId);
 
     return people;
   } catch (err: unknown) {
@@ -121,7 +124,7 @@ export async function readMultiDayAttendanceExcel(
     }
 
     const people = rows
-      .map((row) => {
+      .map((row, index) => {
         const nid = toEnglishDigits(String(row[nationalIdKey] ?? "")).replace(/\s+/g, "");
         const validation = validateNationalId(nid);
         
@@ -130,10 +133,10 @@ export async function readMultiDayAttendanceExcel(
           id: String(row[idKey] ?? "").trim(),
           nationalId: nid,
           invalidReason: validation.isValid ? undefined : validation.reason,
+          rowNumber: index + 2,
         };
       })
-      .filter((person) => person.name || person.id || person.nationalId)
-      .filter((person) => person.name && person.id && person.nationalId);
+      .filter((person) => person.name || person.nationalId);
 
     if (people.length === 0) {
       throw new Error("لم يتم العثور على أي سجلات مكتملة داخل الملف.");

@@ -7,6 +7,13 @@ interface Attendee {
   attendedDays?: number;
 }
 
+interface InvalidEntry {
+  name: string;
+  nationalId: string;
+  reason: string;
+  rowNumber?: number;
+}
+
 interface ReviewWarningsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +21,7 @@ interface ReviewWarningsModalProps {
   targetedAttendees: Attendee[];
   bulkCheckResults: Record<string, { status: string; warningsCount: number }>;
   isProcessing: boolean;
+  invalidEntries?: InvalidEntry[];
 }
 
 export default function ReviewWarningsModal({
@@ -23,6 +31,7 @@ export default function ReviewWarningsModal({
   targetedAttendees,
   bulkCheckResults,
   isProcessing,
+  invalidEntries = [],
 }: ReviewWarningsModalProps) {
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const [prevTargetedAttendees, setPrevTargetedAttendees] = useState(targetedAttendees);
@@ -116,7 +125,25 @@ export default function ReviewWarningsModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 sm:p-8 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-6 sm:p-8 overflow-y-auto flex-1 custom-scrollbar space-y-6">
+          {invalidEntries && invalidEntries.length > 0 && (
+            <div className="border-r-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-4 rounded-xl shadow-sm text-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="font-extrabold text-base">تنبيه: تم رصد أرقام قومية غير صالحة وسيتم تخطيها تلقائيًا</span>
+              </div>
+              <ul className="list-disc list-inside space-y-1.5 text-xs max-h-36 overflow-y-auto custom-scrollbar pr-2">
+                {invalidEntries.map((entry, idx) => (
+                  <li key={idx} className="leading-relaxed">
+                    خد بالك في مشاكل في الصف رقم <span className="font-black text-red-600 dark:text-red-400">{entry.rowNumber || "?"}</span> عشان &quot;{entry.reason}&quot; للمتدرب اللي بالاسم <span className="font-bold text-gray-900 dark:text-white">{entry.name}</span> (الرقم القومي: {entry.nationalId})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <table className="w-full text-sm text-right text-gray-600 dark:text-gray-300">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300 font-semibold border-b border-gray-200 dark:border-gray-700">
