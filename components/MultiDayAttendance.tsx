@@ -32,7 +32,7 @@ interface IntermediateMultiDayData {
   passedList: MultiDayAttendanceSummaryRow[];
   newBlacklistEntriesUI: MultiDayAttendanceSummaryRow[];
   totalFailedCount: number;
-  invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[];
+  invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number; rowNumber?: number }[];
   skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[];
 }
 
@@ -182,27 +182,51 @@ export default function MultiDayAttendance() {
 
     try {
       const grouped = new Map<string, MultiDayAttendanceSummaryRow>();
+      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number; rowNumber?: number }[] = [];
 
       // Step 1: Initialize list from Registered Users (base no-shows with 0 days attended)
       regParsedRows.forEach((person) => {
-        grouped.set(person.nationalId, {
-          ...person,
-          attendedDays: 0,
-        });
+        if (person.invalidReason) {
+          invalidBlacklistEntries.push({
+            name: person.name,
+            nationalId: person.nationalId,
+            reason: person.invalidReason,
+            attendedDays: 0,
+            rowNumber: person.rowNumber,
+          });
+        } else {
+          grouped.set(person.nationalId, {
+            ...person,
+            attendedDays: 0,
+          });
+        }
       });
 
       // Step 2: Increment attendedDays using Attendance list
       parsedRows.forEach((person) => {
-        const existing = grouped.get(person.nationalId);
-
-        if (existing) {
-          existing.attendedDays += 1;
+        if (person.invalidReason) {
+          const exists = invalidBlacklistEntries.some(e => e.nationalId === person.nationalId && e.name === person.name);
+          if (!exists) {
+            invalidBlacklistEntries.push({
+              name: person.name,
+              nationalId: person.nationalId,
+              reason: person.invalidReason,
+              attendedDays: 1,
+              rowNumber: person.rowNumber,
+            });
+          }
         } else {
-          // Edge case: someone is in the attendance sheet but not in the registered sheet
-          grouped.set(person.nationalId, {
-            ...person,
-            attendedDays: 1,
-          });
+          const existing = grouped.get(person.nationalId);
+
+          if (existing) {
+            existing.attendedDays += 1;
+          } else {
+            // Edge case: someone is in the attendance sheet but not in the registered sheet
+            grouped.set(person.nationalId, {
+              ...person,
+              attendedDays: 1,
+            });
+          }
         }
       });
 
@@ -219,7 +243,6 @@ export default function MultiDayAttendance() {
       const existingBlacklistIds =
         failedList.length > 0 ? await getBlacklistIds() : new Set<string>();
 
-      const invalidBlacklistEntries: { name: string; nationalId: string; reason: string; attendedDays: number }[] = [];
       const skippedExistingBlacklistEntries: { name: string; nationalId: string; attendedDays: number }[] = [];
       const newBlacklistEntriesUI: typeof failedList = [];
 
@@ -237,16 +260,7 @@ export default function MultiDayAttendance() {
 
       const validFailedListToBackend: typeof failedList = [];
       failedList.forEach((person) => {
-        if (person.invalidReason) {
-          invalidBlacklistEntries.push({
-            name: person.name,
-            nationalId: person.nationalId,
-            reason: person.invalidReason,
-            attendedDays: person.attendedDays,
-          });
-        } else {
-          validFailedListToBackend.push(person);
-        }
+        validFailedListToBackend.push(person);
       });
 
       const intermediateData = {
@@ -411,6 +425,7 @@ export default function MultiDayAttendance() {
           targetedAttendees={reviewTargetedAttendees}
           bulkCheckResults={reviewBulkResults}
           isProcessing={isProcessing}
+          invalidEntries={intermediateProcessData?.invalidBlacklistEntries}
         />
 
         <div className="mx-auto max-w-6xl space-y-8">
