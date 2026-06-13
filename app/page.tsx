@@ -63,16 +63,21 @@ const PROGRAM_LABELS: Record<string, string> = {
 function buildTracksChartData(entries: BlacklistEntry[]) {
   const trackCounts: Record<string, number> = {};
   entries.forEach(entry => {
+    const uniqueTracks = new Set<string>();
     if (entry.absences) {
       entry.absences.forEach(a => {
-        if (!trackCounts[a.track]) trackCounts[a.track] = 0;
-        trackCounts[a.track]++;
+        if (a.track && a.track !== "غير محدد" && a.track !== "إضافة يدوية") {
+          uniqueTracks.add(a.track);
+        }
       });
     }
+    uniqueTracks.forEach(t => {
+      if (!trackCounts[t]) trackCounts[t] = 0;
+      trackCounts[t]++;
+    });
   });
 
   return Object.keys(trackCounts)
-    .filter(t => t !== "غير محدد" && t !== "إضافة يدوية")
     .map(t => ({ name: t, value: trackCounts[t] }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5); // top 5 tracks
@@ -295,7 +300,7 @@ function AdminEmployeeDashboard() {
           const sortedData = statsResponse.blacklist || [];
           setData(sortedData);
 
-          setTotalCount(statsResponse.users?.total || 0);
+          setTotalCount(sortedData.length);
           setWarningsCount(sortedData.filter((e: BlacklistEntry) => e.status === "warning").length);
           
           const now = new Date();
@@ -309,8 +314,8 @@ function AdminEmployeeDashboard() {
 
           const initialFiltered = filterEntriesByTimeRange(sortedData, "monthly");
           setTracksData(buildTracksChartData(initialFiltered));
-          setWarningsTrackData(buildTracksChartData(initialFiltered.filter((e: BlacklistEntry) => e.status === "warning")));
-          setBlacklistTrackData(buildTracksChartData(initialFiltered.filter((e: BlacklistEntry) => e.status === "blacklisted")));
+          setWarningsTrackData(buildTracksChartData(sortedData.filter((e: BlacklistEntry) => e.status === "warning")));
+          setBlacklistTrackData(buildTracksChartData(sortedData.filter((e: BlacklistEntry) => e.status === "blacklisted")));
         }
       } catch (err) {
         console.error(err);
@@ -874,11 +879,13 @@ function AdminEmployeeDashboard() {
             <div className="flex-1 w-full min-h-[200px]">
               <ChartContainer loading={loading}>
                 {({ width, height }) => (
-                  <BarChart width={width} height={height} data={warningsTrackData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <BarChart width={width} height={height} data={warningsTrackData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} className="dark:stroke-gray-700" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#92400e', fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip cursor={{ fill: 'rgba(245, 158, 11, 0.1)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="value" name="عدد الإنذارات" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Tooltip cursor={{ fill: 'rgba(245, 158, 11, 0.1)' }} content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="عدد الإنذارات" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                      <LabelList dataKey="value" position="top" fill="#d97706" fontSize={12} fontWeight={700} />
+                    </Bar>
                   </BarChart>
                 )}
               </ChartContainer>
@@ -903,11 +910,13 @@ function AdminEmployeeDashboard() {
             <div className="flex-1 w-full min-h-[200px]">
               <ChartContainer loading={loading}>
                 {({ width, height }) => (
-                  <BarChart width={width} height={height} data={blacklistTrackData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <BarChart width={width} height={height} data={blacklistTrackData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} className="dark:stroke-gray-700" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#991b1b', fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.1)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="value" name="مضافين للبلاك ليست" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                    <Tooltip cursor={{ fill: 'rgba(239, 68, 68, 0.1)' }} content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="مضافين للبلاك ليست" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                      <LabelList dataKey="value" position="top" fill="#dc2626" fontSize={12} fontWeight={700} />
+                    </Bar>
                   </BarChart>
                 )}
               </ChartContainer>
