@@ -47,16 +47,7 @@ const PROGRAM_COLORS: Record<string, string> = {
   "Consultation & Mentorship": "#db2777"
 };
 
-const PROGRAM_LABELS: Record<string, string> = {
-  "Entrepreneurship / Technology transfer": "ريادة أعمال",
-  "Career development": "تطوير مهني",
-  "Freelancing coaches": "عمل حر",
-  "Acceleration program": "مسرعة أعمال",
-  "Hackathons / Competitions": "هاكاثون ومسابقات",
-  "Awareness events": "نشر وعي",
-  "Incubation": "احتضان",
-  "Consultation": "استشارات"
-};
+
 
 // Removed client-side buildChartData logic. Server now handles it via /api/dashboard/stats
 
@@ -595,7 +586,7 @@ function AdminEmployeeDashboard() {
                   <BarChart data={trainingStats?.programDays || []} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
                     <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
-                    <YAxis dataKey="program" type="category" tickFormatter={(val) => PROGRAM_LABELS[val as string] || val} width={90} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 14, fontWeight: 700 }} />
+                    <YAxis dataKey="program" type="category" width={160} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 700 }} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                     <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
                       {trainingStats?.programDays.map((entry, index) => (
