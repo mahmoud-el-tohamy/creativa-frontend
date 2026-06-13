@@ -702,11 +702,10 @@ function SessionModal({
                   setForm((f) => {
                     const nextForm = { ...f };
                     if (val === "Consultation") {
-                      nextForm.programName = CONSULTATION_TARGET_PROGRAMS.includes(
-                        f.programName,
-                      )
-                        ? f.programName
-                        : "Career Development";
+                      nextForm.programName =
+                        CONSULTATION_TARGET_PROGRAMS.includes(f.programName)
+                          ? f.programName
+                          : "Career Development";
                       nextForm.type = "Consultation";
                     } else {
                       nextForm.programName = val;
@@ -735,7 +734,10 @@ function SessionModal({
                 </label>
                 <CustomSelect
                   value={form.programName}
-                  options={CONSULTATION_TARGET_PROGRAMS.map((p) => ({ value: p, label: p }))}
+                  options={CONSULTATION_TARGET_PROGRAMS.map((p) => ({
+                    value: p,
+                    label: p,
+                  }))}
                   onChange={(v) =>
                     setForm((f) => ({ ...f, programName: v as ProgramName }))
                   }
@@ -751,7 +753,10 @@ function SessionModal({
                 </label>
                 <CustomSelect
                   value={form.type}
-                  disabled={form.programName === "Awareness event" || form.programName === "Incubation"}
+                  disabled={
+                    form.programName === "Awareness event" ||
+                    form.programName === "Incubation"
+                  }
                   options={[
                     { value: "Training", label: "تدريب" },
                     { value: "Awareness Event", label: "فعالية توعوية" },
@@ -1349,12 +1354,14 @@ function ImportModal({
         updatedDetails: res.data.updatedDetails,
         unchangedDuplicates: res.data.unchangedDuplicates,
       });
-      setShowUpdates(res.data.updated > 0 || Boolean(res.data.updatedDetails?.length));
+      setShowUpdates(
+        res.data.updated > 0 || Boolean(res.data.updatedDetails?.length),
+      );
       setShowDuplicates(false);
       if (res.data.imported > 0 || res.data.updated > 0) {
         showToast(
           `تم الاستيراد بنجاح: إضافة ${res.data.imported} وتحديث ${res.data.updated} جلسة.`,
-          "success"
+          "success",
         );
         onImported();
       }
@@ -1685,7 +1692,10 @@ function ImportModal({
                   {showUpdates && (
                     <div className="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-gray-800">
                       {updatedDetails.map((item, idx) => (
-                        <div key={`${item.row}-${idx}`} className="p-3 space-y-3">
+                        <div
+                          key={`${item.row}-${idx}`}
+                          className="p-3 space-y-3"
+                        >
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                             <div className="min-w-0 space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
@@ -1751,7 +1761,10 @@ function ImportModal({
                       ))}
                       {missingUpdatedDetailsCount > 0 && (
                         <div className="m-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-6 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
-                          تم تحديث {missingUpdatedDetailsCount} صف، لكن الخادم لم يرجع تفاصيل التغييرات لهذه الصفوف. أعد تشغيل الباك إند المحلي ثم جرّب الاستيراد مرة أخرى لعرض القيم قبل وبعد.
+                          تم تحديث {missingUpdatedDetailsCount} صف، لكن الخادم
+                          لم يرجع تفاصيل التغييرات لهذه الصفوف. أعد تشغيل الباك
+                          إند المحلي ثم جرّب الاستيراد مرة أخرى لعرض القيم قبل
+                          وبعد.
                         </div>
                       )}
                     </div>
@@ -1760,67 +1773,69 @@ function ImportModal({
               )}
 
               {/* Unchanged duplicates */}
-              {result.unchangedDuplicates && result.unchangedDuplicates.length > 0 && (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setShowDuplicates(!showDuplicates)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-bold text-xs text-gray-800 dark:text-gray-200"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <svg
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          showDuplicates ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2.5"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                      الصفوف المتكررة والمطابقة بالكامل ({result.unchangedDuplicates.length})
-                    </span>
-                  </button>
-
-                  {showDuplicates && (
-                    <div className="p-3 bg-white dark:bg-gray-900/40 divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto custom-scrollbar space-y-1">
-                      {result.unchangedDuplicates.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="py-1.5 first:pt-0 flex justify-between items-center text-xs"
+              {result.unchangedDuplicates &&
+                result.unchangedDuplicates.length > 0 && (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowDuplicates(!showDuplicates)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-bold text-xs text-gray-800 dark:text-gray-200"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <svg
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            showDuplicates ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          <div className="flex flex-col gap-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-black text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                                صف {item.row}
-                              </span>
-                              <span className="font-bold text-gray-900 dark:text-white break-words">
-                                {item.sessionName}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                        الصفوف المتكررة والمطابقة بالكامل (
+                        {result.unchangedDuplicates.length})
+                      </span>
+                    </button>
+
+                    {showDuplicates && (
+                      <div className="p-3 bg-white dark:bg-gray-900/40 divide-y divide-gray-100 dark:divide-gray-800 max-h-52 overflow-y-auto custom-scrollbar space-y-1">
+                        {result.unchangedDuplicates.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="py-1.5 first:pt-0 flex justify-between items-center text-xs"
+                          >
+                            <div className="flex flex-col gap-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-black text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                  صف {item.row}
+                                </span>
+                                <span className="font-bold text-gray-900 dark:text-white break-words">
+                                  {item.sessionName}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                {item.instructorName}
                               </span>
                             </div>
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                              {item.instructorName}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                                {formatDate(item.date)}
+                              </span>
+                              <span className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                مكرر ومطابق
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                              {formatDate(item.date)}
-                            </span>
-                            <span className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                              مكرر ومطابق
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               {/* Errors list */}
               {result.errors && result.errors.length > 0 && (
@@ -2680,142 +2695,188 @@ function TimetableTab({
                 يوم كامل
               </p>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
               <table
                 className="w-full text-[10px] sm:text-xs lg:text-sm border-collapse"
                 style={{ minWidth: "1100px" }}
                 dir="rtl"
               >
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-700/60">
-                    <th className="sticky right-0 z-10 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px]">
+                  <tr className="bg-gray-50 dark:bg-gray-800 shadow-sm h-10">
+                    <th className="sticky right-0 top-0 z-30 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                       البرنامج
                     </th>
                     {Array.from({ length: 31 }, (_, i) => (
                       <th
                         key={i}
-                        className="px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8"
+                        className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                       >
                         {i + 1}
                       </th>
                     ))}
-                    <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700">
+                    <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                       المجموع
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {snap.months.map((monthData: IMonthData) => (
-                    <React.Fragment
-                      key={`${monthData.year}-${monthData.monthIndex}`}
-                    >
-                      <tr className="bg-blue-50/60 dark:bg-blue-900/20">
-                        <td
-                          colSpan={33}
-                          className="sticky right-0 bg-blue-50/60 dark:bg-blue-900/20 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
-                        >
-                          {monthData.monthName} {monthData.year}
-                        </td>
-                      </tr>
-                      {TIMETABLE_PROGRAMS.map((prog) => {
-                        const progData = monthData.programs[prog] as
-                          | (Record<number, number> & { monthTotal: number })
-                          | undefined;
-                        const color = TIMETABLE_PROGRAM_COLORS[prog];
-                        return (
-                          <tr
-                            key={prog}
-                            className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors"
-                          >
-                            <td
-                              className="sticky right-0 z-10 bg-white dark:bg-gray-800 px-2 py-1 text-right font-medium text-gray-700 dark:text-gray-300 border-l border-gray-100 dark:border-gray-700 text-[10px] leading-tight"
-                              style={{ borderRight: `3px solid ${color}` }}
-                            >
-                              {prog}
-                            </td>
-                            {Array.from({ length: 31 }, (_, i) => {
-                              const day = i + 1;
-                              const val = progData ? (progData[day] ?? 0) : 0;
-                              const isInvalid = day > monthData.daysInMonth;
-                              const isConsultation =
-                                monthData.consultations?.[prog]?.includes(day);
-
-                              let cellClass = "";
-                              if (isInvalid) {
-                                cellClass = "bg-gray-50 dark:bg-gray-800/50";
-                              } else if (val > 0) {
-                                if (isConsultation) {
-                                  cellClass =
-                                    "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold";
-                                } else if (val === 0.5) {
-                                  cellClass =
-                                    "bg-amber-100 dark:bg-amber-800/30 text-amber-800 dark:text-amber-300 font-bold";
-                                } else {
-                                  cellClass =
-                                    "bg-teal-100 dark:bg-teal-800/30 text-teal-800 dark:text-teal-300 font-bold";
-                                }
-                              }
-
-                              return (
-                                <td
-                                  key={day}
-                                  className={`text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 ${cellClass} relative`}
-                                  title={
-                                    val > 0
-                                      ? `${val} يوم${isConsultation ? " (استشارة)" : ""}`
-                                      : undefined
-                                  }
-                                >
-                                  {!isInvalid && val > 0 ? (
-                                    <>
-                                      {val === 0.5 ? "½" : val}
-                                      {isConsultation && (
-                                        <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                                      )}
-                                    </>
-                                  ) : (
-                                    ""
-                                  )}
-                                </td>
-                              );
-                            })}
-                            <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40">
-                              {progData?.monthTotal ?? 0}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      <tr className="bg-gray-100/80 dark:bg-gray-700/40 font-bold">
-                        <td className="sticky right-0 z-10 bg-gray-100/80 dark:bg-gray-700/40 px-2 py-1 text-right text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-gray-600 text-[10px]">
-                          إجمالي الشهر
-                        </td>
-                        {Array.from({ length: 31 }, (_, i) => {
-                          const day = i + 1;
-                          const isInvalid = day > monthData.daysInMonth;
-                          const colTotal = isInvalid
-                            ? 0
-                            : TIMETABLE_PROGRAMS.reduce((sum, prog) => {
-                                const pd = monthData.programs[prog] as
-                                  | Record<number, number>
-                                  | undefined;
-                                return sum + (pd ? (pd[day] ?? 0) : 0);
-                              }, 0);
+                {snap.months.map((monthData: IMonthData) => (
+                  <tbody
+                    key={`${monthData.year}-${monthData.monthIndex}`}
+                    className="relative"
+                  >
+                    <tr className="bg-blue-50 dark:bg-blue-950">
+                      <td
+                        colSpan={33}
+                        className="sticky right-0 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
+                      >
+                        {monthData.monthName} {monthData.year}
+                      </td>
+                    </tr>
+                    {/* Weekday names row */}
+                    <tr className="bg-gray-100 dark:bg-gray-800 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                      <td className="sticky right-0 top-10 z-30 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                        يوم الأسبوع
+                      </td>
+                      {Array.from({ length: 31 }, (_, i) => {
+                        const day = i + 1;
+                        const isInvalid = day > monthData.daysInMonth;
+                        if (isInvalid) {
                           return (
                             <td
                               key={day}
-                              className={`text-center h-6 text-[10px] ${isInvalid ? "bg-gray-200/50 dark:bg-gray-800" : colTotal > 0 ? "text-gray-800 dark:text-gray-200" : ""}`}
-                            >
-                              {!isInvalid && colTotal > 0 ? colTotal : ""}
-                            </td>
+                              className="sticky top-10 z-20 bg-gray-50 dark:bg-gray-800 text-center border-r border-gray-100 dark:border-gray-700/30"
+                            />
                           );
-                        })}
-                        <td className="px-2 text-center text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-gray-700/60">
-                          {monthData.monthlyDays}
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  ))}
-                </tbody>
+                        }
+                        const d = new Date(
+                          monthData.year,
+                          monthData.monthIndex,
+                          day,
+                        );
+                        const weekdays = [
+                          "أحد",
+                          "إثنين",
+                          "ثلاثاء",
+                          "أربعاء",
+                          "خميس",
+                          "جمعة",
+                          "سبت",
+                        ];
+                        const label = weekdays[d.getDay()];
+                        const isWeekend = d.getDay() === 5 || d.getDay() === 6;
+                        return (
+                          <td
+                            key={day}
+                            className={`sticky top-10 z-20 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                              isWeekend
+                                ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 font-bold"
+                                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                            }`}
+                          >
+                            {label}
+                          </td>
+                        );
+                      })}
+                      <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
+                    </tr>
+                    {TIMETABLE_PROGRAMS.map((prog) => {
+                      const progData = monthData.programs[prog] as
+                        | (Record<number, number> & { monthTotal: number })
+                        | undefined;
+                      const color = TIMETABLE_PROGRAM_COLORS[prog];
+                      return (
+                        <tr
+                          key={prog}
+                          className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors"
+                        >
+                          <td
+                            className="sticky right-0 z-10 bg-white dark:bg-gray-800 px-2 py-1 text-right font-medium text-gray-700 dark:text-gray-300 border-l border-gray-100 dark:border-gray-700 text-[10px] leading-tight"
+                            style={{ borderRight: `3px solid ${color}` }}
+                          >
+                            {prog}
+                          </td>
+                          {Array.from({ length: 31 }, (_, i) => {
+                            const day = i + 1;
+                            const val = progData ? (progData[day] ?? 0) : 0;
+                            const isInvalid = day > monthData.daysInMonth;
+                            const isConsultation =
+                              monthData.consultations?.[prog]?.includes(day);
+
+                            let cellClass = "";
+                            if (isInvalid) {
+                              cellClass = "bg-gray-50 dark:bg-gray-800/50";
+                            } else if (val > 0) {
+                              if (isConsultation) {
+                                cellClass =
+                                  "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold";
+                              } else if (val === 0.5) {
+                                cellClass =
+                                  "bg-amber-100 dark:bg-amber-800/30 text-amber-800 dark:text-amber-300 font-bold";
+                              } else {
+                                cellClass =
+                                  "bg-teal-100 dark:bg-teal-800/30 text-teal-800 dark:text-teal-300 font-bold";
+                              }
+                            }
+
+                            return (
+                              <td
+                                key={day}
+                                className={`text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 ${cellClass} relative`}
+                                title={
+                                  val > 0
+                                    ? `${val} يوم${isConsultation ? " (استشارة)" : ""}`
+                                    : undefined
+                                }
+                              >
+                                {!isInvalid && val > 0 ? (
+                                  <>
+                                    {val === 0.5 ? "½" : val}
+                                    {isConsultation && (
+                                      <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                                    )}
+                                  </>
+                                ) : (
+                                  ""
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40">
+                            {progData?.monthTotal ?? 0}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
+                      <td className="sticky right-0 z-10 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-gray-600 text-[10px]">
+                        إجمالي الشهر
+                      </td>
+                      {Array.from({ length: 31 }, (_, i) => {
+                        const day = i + 1;
+                        const isInvalid = day > monthData.daysInMonth;
+                        const colTotal = isInvalid
+                          ? 0
+                          : TIMETABLE_PROGRAMS.reduce((sum, prog) => {
+                              const pd = monthData.programs[prog] as
+                                | Record<number, number>
+                                | undefined;
+                              return sum + (pd ? (pd[day] ?? 0) : 0);
+                            }, 0);
+                        return (
+                          <td
+                            key={day}
+                            className={`text-center h-6 text-[10px] ${isInvalid ? "bg-gray-200 dark:bg-gray-900" : colTotal > 0 ? "text-gray-800 dark:text-gray-200" : ""}`}
+                          >
+                            {!isInvalid && colTotal > 0 ? colTotal : ""}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 text-center text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-900">
+                        {monthData.monthlyDays}
+                      </td>
+                    </tr>
+                  </tbody>
+                ))}
               </table>
             </div>
           </div>
@@ -3057,33 +3118,71 @@ const PlanCell = React.memo(function PlanCell({
       <td className="border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 bg-gray-50 dark:bg-gray-800/50" />
     );
   }
-  let cellColorCls = "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
+  let cellColorCls =
+    "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
   let label = "";
 
   if (value > 0) {
     label = value.toString();
     switch (value) {
-      case 0.5: cellColorCls = "bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50"; break;
-      case 1: cellColorCls = "bg-sky-100 dark:bg-sky-800/40 text-sky-800 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-700/50"; break;
-      case 1.5: cellColorCls = "bg-blue-100 dark:bg-blue-800/40 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-700/50"; break;
-      case 2: cellColorCls = "bg-teal-100 dark:bg-teal-800/40 text-teal-800 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-700/50"; break;
-      case 2.5: cellColorCls = "bg-emerald-100 dark:bg-emerald-800/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-700/50"; break;
-      case 3: cellColorCls = "bg-green-100 dark:bg-green-800/40 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-700/50"; break;
-      case 3.5: cellColorCls = "bg-lime-100 dark:bg-lime-800/40 text-lime-800 dark:text-lime-300 hover:bg-lime-200 dark:hover:bg-lime-700/50"; break;
-      case 4: cellColorCls = "bg-amber-100 dark:bg-amber-800/40 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-700/50"; break;
-      case 4.5: cellColorCls = "bg-orange-100 dark:bg-orange-800/40 text-orange-800 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-700/50"; break;
-      case 5: cellColorCls = "bg-red-100 dark:bg-red-800/40 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-700/50"; break;
-      default: cellColorCls = "bg-rose-100 dark:bg-rose-800/40 text-rose-800 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-700/50"; break;
+      case 0.5:
+        cellColorCls =
+          "bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50";
+        break;
+      case 1:
+        cellColorCls =
+          "bg-sky-100 dark:bg-sky-800/40 text-sky-800 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-700/50";
+        break;
+      case 1.5:
+        cellColorCls =
+          "bg-blue-100 dark:bg-blue-800/40 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-700/50";
+        break;
+      case 2:
+        cellColorCls =
+          "bg-teal-100 dark:bg-teal-800/40 text-teal-800 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-700/50";
+        break;
+      case 2.5:
+        cellColorCls =
+          "bg-emerald-100 dark:bg-emerald-800/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-700/50";
+        break;
+      case 3:
+        cellColorCls =
+          "bg-green-100 dark:bg-green-800/40 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-700/50";
+        break;
+      case 3.5:
+        cellColorCls =
+          "bg-lime-100 dark:bg-lime-800/40 text-lime-800 dark:text-lime-300 hover:bg-lime-200 dark:hover:bg-lime-700/50";
+        break;
+      case 4:
+        cellColorCls =
+          "bg-amber-100 dark:bg-amber-800/40 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-700/50";
+        break;
+      case 4.5:
+        cellColorCls =
+          "bg-orange-100 dark:bg-orange-800/40 text-orange-800 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-700/50";
+        break;
+      case 5:
+        cellColorCls =
+          "bg-red-100 dark:bg-red-800/40 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-700/50";
+        break;
+      default:
+        cellColorCls =
+          "bg-rose-100 dark:bg-rose-800/40 text-rose-800 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-700/50";
+        break;
     }
   }
 
-  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? 'font-bold ' : ''}${cellColorCls}`;
+  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? "font-bold " : ""}${cellColorCls}`;
   return (
     <td
       className={cellCls}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      title={value > 0 ? `${value} يوم — كليك شمال للزيادة، يمين للنقصان` : "انقر لتعيين نصف يوم"}
+      title={
+        value > 0
+          ? `${value} يوم — كليك شمال للزيادة، يمين للنقصان`
+          : "انقر لتعيين نصف يوم"
+      }
     >
       {value === 0 ? (
         <span className="opacity-0 group-hover:opacity-100 text-[8px]">+</span>
@@ -3198,7 +3297,14 @@ function PlannedTab({
   }, [isDirty, localPlan, doSave]);
 
   const handleCellClick = useCallback(
-    (e: React.MouseEvent, program: string, monthIndex: number, day: number, currentVal: number, isRightClick: boolean) => {
+    (
+      e: React.MouseEvent,
+      program: string,
+      monthIndex: number,
+      day: number,
+      currentVal: number,
+      isRightClick: boolean,
+    ) => {
       e.preventDefault(); // Prevent context menu on right click
       let next = currentVal;
       if (isRightClick) {
@@ -3206,7 +3312,7 @@ function PlannedTab({
       } else {
         next = Math.min(5, currentVal + 0.5);
       }
-      
+
       if (next !== currentVal) {
         dispatch({
           type: "UPDATE_LOCAL_CELL",
@@ -3287,7 +3393,6 @@ function PlannedTab({
             onChange={handleFYChange}
           />
         </div>
-
 
         <div className="flex-1" />
 
@@ -3382,122 +3487,177 @@ function PlannedTab({
             الخطة السنوية — {selectedPlannedFY}
           </h3>
           <p className="text-xs text-gray-400">
-            انقر على الخلايا لتبديل الحالة: فارغة → نصف يوم → يوم كامل
+            انقر على الخلايا لتبديل الحالة: كليك يمين للتقليل،كليك شمال للزيادة،
           </p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
           <table
             className="w-full text-[10px] sm:text-xs border-collapse"
             style={{ minWidth: "1100px" }}
             dir="rtl"
           >
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-700/60">
-                <th className="sticky right-0 z-10 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px]">
+              <tr className="bg-gray-50 dark:bg-gray-800 shadow-sm h-10">
+                <th className="sticky right-0 top-0 z-30 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                   البرنامج
                 </th>
                 {Array.from({ length: 31 }, (_, i) => (
                   <th
                     key={i}
-                    className="px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8"
+                    className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                   >
                     {i + 1}
                   </th>
                 ))}
-                <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700">
+                <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                   المجموع
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {FY_CALENDAR_MONTHS.map((calMonth) => {
-                const calYear = getCalendarYearForFYMonth(calMonth, startYear);
-                const daysInMonth = getDaysInMonth(calYear, calMonth);
-                return (
-                  <React.Fragment key={calMonth}>
-                    {/* Month header */}
-                    <tr className="bg-blue-50/60 dark:bg-blue-900/20">
-                      <td
-                        colSpan={33}
-                        className="sticky right-0 bg-blue-50/60 dark:bg-blue-900/20 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
-                      >
-                        {ARABIC_MONTH_NAMES[calMonth]} {calYear}
-                      </td>
-                    </tr>
-                    {/* Program rows */}
-                    {ALL_PLANNED_PROGRAMS.map((prog) => {
-                      const color = TIMETABLE_PROGRAM_COLORS[prog] ?? "#E5E7EB";
-                      return (
-                        <tr
-                          key={prog}
-                          className="group border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors"
-                        >
-                          <td
-                            className="sticky right-0 z-10 bg-white dark:bg-gray-800 px-2 py-1 text-right font-medium text-gray-700 dark:text-gray-300 border-l border-gray-100 dark:border-gray-700 text-[10px] leading-tight"
-                            style={{ borderRight: `3px solid ${color}` }}
-                          >
-                            {prog}
-                          </td>
-                          {Array.from({ length: 31 }, (_, i) => {
-                            const day = i + 1;
-                            const isInvalid = day > daysInMonth;
-                            const val =
-                              localPlan?.[prog]?.[String(calMonth)]?.[
-                                String(day)
-                              ] ?? 0;
-                            return (
-                                <PlanCell
-                                  key={day}
-                                  value={val}
-                                  isInvalid={isInvalid}
-                                  onClick={(e) =>
-                                    !isInvalid &&
-                                    handleCellClick(e, prog, calMonth, day, val, false)
-                                  }
-                                  onContextMenu={(e) =>
-                                    !isInvalid &&
-                                    handleCellClick(e, prog, calMonth, day, val, true)
-                                  }
-                                />
-                            );
-                          })}
-                          <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40 text-[10px]">
-                            {monthTotals[prog]?.[calMonth] ?? 0}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {/* Month totals row */}
-                    <tr className="bg-gray-100/80 dark:bg-gray-700/40 font-bold">
-                      <td className="sticky right-0 z-10 bg-gray-100/80 dark:bg-gray-700/40 px-2 py-1 text-right text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-gray-600 text-[10px]">
-                        إجمالي الشهر
-                      </td>
-                      {Array.from({ length: 31 }, (_, i) => {
-                        const day = i + 1;
-                        const isInvalid = day > daysInMonth;
-                        const colTotal = isInvalid
-                          ? 0
-                          : (colTotals[calMonth]?.[day] ?? 0);
+            {FY_CALENDAR_MONTHS.map((calMonth) => {
+              const calYear = getCalendarYearForFYMonth(calMonth, startYear);
+              const daysInMonth = getDaysInMonth(calYear, calMonth);
+              return (
+                <tbody key={calMonth} className="relative">
+                  {/* Month header */}
+                  <tr className="bg-blue-50 dark:bg-blue-950">
+                    <td
+                      colSpan={33}
+                      className="sticky right-0 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
+                    >
+                      {ARABIC_MONTH_NAMES[calMonth]} {calYear}
+                    </td>
+                  </tr>
+                  {/* Weekday names row */}
+                  <tr className="bg-gray-100 dark:bg-gray-800 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                    <td className="sticky right-0 top-10 z-30 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                      يوم الأسبوع
+                    </td>
+                    {Array.from({ length: 31 }, (_, i) => {
+                      const day = i + 1;
+                      const isInvalid = day > daysInMonth;
+                      if (isInvalid) {
                         return (
                           <td
                             key={day}
-                            className={`text-center h-6 text-[10px] ${isInvalid ? "bg-gray-200/50 dark:bg-gray-800" : colTotal > 0 ? "text-gray-800 dark:text-gray-200" : ""}`}
-                          >
-                            {!isInvalid && colTotal > 0 ? colTotal : ""}
-                          </td>
+                            className="sticky top-10 z-20 bg-gray-50 dark:bg-gray-800 text-center border-r border-gray-100 dark:border-gray-700/30"
+                          />
                         );
-                      })}
-                      <td className="px-2 text-center text-gray-800 dark:text-gray-200 bg-gray-200/60 dark:bg-gray-700/60 text-[10px]">
-                        {ALL_PLANNED_PROGRAMS.reduce(
-                          (s, prog) => s + (monthTotals[prog]?.[calMonth] ?? 0),
-                          0,
-                        )}
-                      </td>
-                    </tr>
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
+                      }
+                      const d = new Date(calYear, calMonth, day);
+                      const weekdays = [
+                        "أحد",
+                        "إثنين",
+                        "ثلاثاء",
+                        "أربعاء",
+                        "خميس",
+                        "جمعة",
+                        "سبت",
+                      ];
+                      const label = weekdays[d.getDay()];
+                      const isWeekend = d.getDay() === 5 || d.getDay() === 6;
+                      return (
+                        <td
+                          key={day}
+                          className={`sticky top-10 z-20 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                            isWeekend
+                              ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 font-bold"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                          }`}
+                        >
+                          {label}
+                        </td>
+                      );
+                    })}
+                    <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
+                  </tr>
+                  {/* Program rows */}
+                  {ALL_PLANNED_PROGRAMS.map((prog) => {
+                    const color = TIMETABLE_PROGRAM_COLORS[prog] ?? "#E5E7EB";
+                    return (
+                      <tr
+                        key={prog}
+                        className="group border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors"
+                      >
+                        <td
+                          className="sticky right-0 z-10 bg-white dark:bg-gray-800 px-2 py-1 text-right font-medium text-gray-700 dark:text-gray-300 border-l border-gray-100 dark:border-gray-700 text-[10px] leading-tight"
+                          style={{ borderRight: `3px solid ${color}` }}
+                        >
+                          {prog}
+                        </td>
+                        {Array.from({ length: 31 }, (_, i) => {
+                          const day = i + 1;
+                          const isInvalid = day > daysInMonth;
+                          const val =
+                            localPlan?.[prog]?.[String(calMonth)]?.[
+                              String(day)
+                            ] ?? 0;
+                          return (
+                            <PlanCell
+                              key={day}
+                              value={val}
+                              isInvalid={isInvalid}
+                              onClick={(e) =>
+                                !isInvalid &&
+                                handleCellClick(
+                                  e,
+                                  prog,
+                                  calMonth,
+                                  day,
+                                  val,
+                                  false,
+                                )
+                              }
+                              onContextMenu={(e) =>
+                                !isInvalid &&
+                                handleCellClick(
+                                  e,
+                                  prog,
+                                  calMonth,
+                                  day,
+                                  val,
+                                  true,
+                                )
+                              }
+                            />
+                          );
+                        })}
+                        <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40 text-[10px]">
+                          {monthTotals[prog]?.[calMonth] ?? 0}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Month totals row */}
+                  <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
+                    <td className="sticky right-0 z-10 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-gray-600 text-[10px]">
+                      إجمالي الشهر
+                    </td>
+                    {Array.from({ length: 31 }, (_, i) => {
+                      const day = i + 1;
+                      const isInvalid = day > daysInMonth;
+                      const colTotal = isInvalid
+                        ? 0
+                        : (colTotals[calMonth]?.[day] ?? 0);
+                      return (
+                        <td
+                          key={day}
+                          className={`text-center h-6 text-[10px] ${isInvalid ? "bg-gray-200 dark:bg-gray-900" : colTotal > 0 ? "text-gray-800 dark:text-gray-200" : ""}`}
+                        >
+                          {!isInvalid && colTotal > 0 ? colTotal : ""}
+                        </td>
+                      );
+                    })}
+                    <td className="px-2 text-center text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-900 text-[10px]">
+                      {ALL_PLANNED_PROGRAMS.reduce(
+                        (s, prog) => s + (monthTotals[prog]?.[calMonth] ?? 0),
+                        0,
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              );
+            })}
           </table>
         </div>
       </div>

@@ -1300,7 +1300,7 @@ const AccountantDashboard = memo(() => {
       </section>
 
       {/* SECTION 4 — Charts Row */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <section className="grid grid-cols-1 gap-8">
         {/* CHART A: Monthly Trend */}
         <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">الاستحقاق الشهري</h2>
@@ -1319,7 +1319,7 @@ const AccountantDashboard = memo(() => {
                   <ResponsiveContainer width="100%" height={height}>
                     <ComposedChart data={data.monthlyTrend} margin={{ top: 20, right: 30, left: 30, bottom: 20 }} className="dir-ltr">
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} dy={10} />
+                      <XAxis dataKey="month" interval={0} axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 600 }} dy={10} />
                       <YAxis yAxisId="left" tickMargin={10} width={50} axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} tickCount={6} />
                       <YAxis yAxisId="right" tickMargin={10} width={60} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#14b8a6', fontSize: 13, fontWeight: 600 }} tickCount={6} />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
