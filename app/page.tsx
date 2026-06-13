@@ -35,13 +35,47 @@ function getCurrentFiscalYear() {
   return `FY${y - 1}-${y}`;
 }
 
+const TRACK_ENGLISH_LABELS: Record<string, string> = {
+  // Arabic values from database (blacklist tracks)
+  "ريادة أعمال": "Entrepreneurship",
+  "عمل حر": "Freelancing",
+  "تطوير مهني": "Career Development",
+  "نشر وعي": "Awareness Event",
+  "استشارات": "Consultation & Mentorship",
+  "هاكاثون ومسابقات": "Hackathons / Competitions",
+  "مسرعة أعمال": "Acceleration Program",
+  "تكنولوجيا": "Tech",
+  "تكنولوجي": "Tech",
+  "احتضان": "Incubation",
+
+  // Long/variant English values from database/API
+  "Entrepreneurship / Technology transfer": "Entrepreneurship",
+  "Freelancing coaches": "Freelancing",
+  "Career development": "Career Development",
+  "Awareness events": "Awareness Event",
+  "Awareness event": "Awareness Event",
+  "Acceleration program": "Acceleration Program",
+  "Acceleration Program": "Acceleration Program",
+  "Hackathons / Competitions": "Hackathons / Competitions",
+  "Incubation": "Incubation",
+  "Consultation": "Consultation & Mentorship",
+  "Consultation & Mentorship": "Consultation & Mentorship",
+  "Tech": "Tech"
+};
+
+const getEnglishTrackName = (name: string): string => {
+  if (!name) return name;
+  const trimmed = name.trim();
+  return TRACK_ENGLISH_LABELS[trimmed] || trimmed;
+};
+
 const PROGRAM_COLORS: Record<string, string> = {
   "Entrepreneurship": "#1D9E75",
   "Career Development": "#7C3AED",
   "Freelancing": "#F59E0B",
-  "Acceleration program": "#6B7280",
+  "Acceleration Program": "#6B7280",
   "Hackathons / Competitions": "#EF4444",
-  "Awareness event": "#EAB308",
+  "Awareness Event": "#EAB308",
   "Incubation": "#9333EA",
   "Tech": "#0284C7",
   "Consultation & Mentorship": "#db2777"
@@ -58,7 +92,7 @@ function buildTracksChartData(entries: BlacklistEntry[]) {
     if (entry.absences) {
       entry.absences.forEach(a => {
         if (a.track && a.track !== "غير محدد" && a.track !== "إضافة يدوية") {
-          uniqueTracks.add(a.track);
+          uniqueTracks.add(getEnglishTrackName(a.track));
         }
       });
     }
@@ -581,22 +615,28 @@ function AdminEmployeeDashboard() {
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">إجمالي أيام التدريب موزعة على البرامج</p>
           <div className="w-full" style={{ height: Math.max(250, (trainingStats?.programDays?.length || 0) * 50 + 50) }} dir="ltr">
             <ChartContainer loading={trainingStatsLoading}>
-              {({ height }) => (
-                <ResponsiveContainer width="100%" height={height}>
-                  <BarChart data={trainingStats?.programDays || []} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
-                    <YAxis dataKey="program" type="category" width={160} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 700 }} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                    <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
-                      {trainingStats?.programDays.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program as string] || "#94a3b8"} />
-                      ))}
-                      <LabelList dataKey="totalDays" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              {({ height }) => {
+                const programDaysData = (trainingStats?.programDays || []).map(item => ({
+                  ...item,
+                  program: getEnglishTrackName(item.program)
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height={height}>
+                    <BarChart data={programDaysData} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
+                      <YAxis dataKey="program" type="category" width={160} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 700 }} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                      <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
+                        {programDaysData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program as string] || "#94a3b8"} />
+                        ))}
+                        <LabelList dataKey="totalDays" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              }}
             </ChartContainer>
           </div>
         </div>
@@ -1348,12 +1388,15 @@ const AccountantDashboard = memo(() => {
                     </div>
                   );
                 }
-                const pieData = data.programBreakdown.map(p => ({
-                  name: p.program,
-                  value: p.totalHours,
-                  fill: PROGRAM_COLORS[p.program] || "#64748b",
-                  sessions: p.totalSessions
-                }));
+                const pieData = data.programBreakdown.map(p => {
+                  const engName = getEnglishTrackName(p.program);
+                  return {
+                    name: engName,
+                    value: p.totalHours,
+                    fill: PROGRAM_COLORS[engName] || "#64748b",
+                    sessions: p.totalSessions
+                  };
+                });
                 return (
                   <ResponsiveContainer width="100%" height={height}>
                     <PieChart>
