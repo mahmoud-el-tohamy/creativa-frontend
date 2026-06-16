@@ -2682,7 +2682,7 @@ function TimetableTab({
             ))}
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-visible">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">
                 جدول التوقيت — {snap.fiscalYear}
@@ -2694,29 +2694,29 @@ function TimetableTab({
                 يوم كامل
               </p>
             </div>
-            <div className="overflow-x-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <div className="custom-scrollbar">
               <table
                 className="w-full text-[10px] sm:text-xs lg:text-sm border-collapse"
                 style={{ minWidth: "1100px" }}
                 dir="rtl"
               >
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-800 shadow-sm h-10">
-                    <th className="sticky right-0 top-0 z-30 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
+                  <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
+                    <th className="sticky right-0 top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                       البرنامج
                     </th>
                     {Array.from({ length: 31 }, (_, i) => (
                       <th
                         key={i}
-                        className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
+                        className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                       >
                         {i + 1}
                       </th>
                     ))}
-                    <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
+                    <th className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
                       استشارات
                     </th>
-                    <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
+                    <th className="sticky top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                       المجموع
                     </th>
                   </tr>
@@ -2735,8 +2735,8 @@ function TimetableTab({
                       </td>
                     </tr>
                     {/* Weekday names row */}
-                    <tr className="bg-gray-100 dark:bg-gray-800 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                      <td className="sticky right-0 top-10 z-30 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                    <tr className="bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                      <td className="sticky right-0 top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                         يوم الأسبوع
                       </td>
                       {Array.from({ length: 31 }, (_, i) => {
@@ -2746,8 +2746,8 @@ function TimetableTab({
                           return (
                             <td
                               key={day}
-                              className="sticky top-10 z-20 bg-gray-50 dark:bg-gray-800 text-center border-r border-gray-100 dark:border-gray-700/30"
-                            />
+                              className="sticky top-[96px] md:top-[104px] z-30 bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
+                            >&nbsp;</td>
                           );
                         }
                         const d = new Date(
@@ -2769,18 +2769,18 @@ function TimetableTab({
                         return (
                           <td
                             key={day}
-                            className={`sticky top-10 z-20 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                            className={`sticky top-[96px] md:top-[104px] z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
                               isWeekend
-                                ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 font-bold"
-                                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                                ? "bg-slate-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold"
+                                : "bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400"
                             }`}
                           >
                             {label}
                           </td>
                         );
                       })}
-                      <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
-                      <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
+                      <td className="sticky top-[96px] md:top-[104px] z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                      <td className="sticky top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
                     </tr>
                     {TIMETABLE_PROGRAMS.map((prog) => {
                       const progData = monthData.programs[prog] as
@@ -2808,6 +2808,8 @@ function TimetableTab({
                             const day = i + 1;
                             const val = progData ? (progData[day] ?? 0) : 0;
                             const isInvalid = day > monthData.daysInMonth;
+                            const d = new Date(monthData.year, monthData.monthIndex, day);
+                            const isWeekend = !isInvalid && (d.getDay() === 5 || d.getDay() === 6);
 
                             let cellClass = "";
                             if (isInvalid) {
@@ -2820,6 +2822,9 @@ function TimetableTab({
                                 cellClass =
                                   "bg-teal-100 dark:bg-teal-800/30 text-teal-800 dark:text-teal-300 font-bold";
                               }
+                            } else if (isWeekend) {
+                              cellClass =
+                                "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-400";
                             }
 
                             return (
@@ -2933,15 +2938,15 @@ function TimetableTab({
                     return (
                       <tr
                         key={at.program}
-                        className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors"
+                        className="group hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors"
                       >
                         <td
-                          className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200"
+                          className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200 group-last:rounded-br-2xl"
                           style={{ borderRight: `3px solid ${color}` }}
                         >
                           {at.program}
                         </td>
-                        <td className="px-3 py-2.5 text-center font-bold text-blue-600 dark:text-blue-400">
+                        <td className="px-3 py-2.5 text-center font-bold text-blue-600 dark:text-gray-200">
                           {at.totalDays}
                         </td>
                         <td className="px-3 py-2.5 text-center text-gray-500 dark:text-gray-400">
@@ -2972,7 +2977,7 @@ function TimetableTab({
                         <td className="px-3 py-2.5 text-center text-gray-600 dark:text-gray-400">
                           {at.q4}
                         </td>
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-3 py-2.5 text-center group-last:rounded-bl-2xl">
                           <span
                             className={`text-xs font-bold ${remaining > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}
                           >
@@ -3123,6 +3128,7 @@ function ArchiveTab({
 interface PlanCellProps {
   value: number;
   isInvalid: boolean;
+  isWeekend?: boolean;
   onClick: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
@@ -3130,6 +3136,7 @@ interface PlanCellProps {
 const PlanCell = React.memo(function PlanCell({
   value,
   isInvalid,
+  isWeekend,
   onClick,
   onContextMenu,
 }: PlanCellProps) {
@@ -3138,8 +3145,9 @@ const PlanCell = React.memo(function PlanCell({
       <td className="border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 bg-gray-50 dark:bg-gray-800/50" />
     );
   }
-  let cellColorCls =
-    "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
+  let cellColorCls = isWeekend
+    ? "bg-slate-200 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-slate-300 dark:hover:bg-slate-600"
+    : "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
   let label = "";
 
   if (value > 0) {
@@ -3192,7 +3200,7 @@ const PlanCell = React.memo(function PlanCell({
     }
   }
 
-  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? "font-bold " : ""}${cellColorCls}`;
+  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? "font-bold" : ""} ${cellColorCls}`;
   return (
     <td
       className={cellCls}
@@ -3502,7 +3510,7 @@ function PlannedTab({
       </div>
 
       {/* Calendar grid */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-visible">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">
             الخطة السنوية — {selectedPlannedFY}
@@ -3511,29 +3519,29 @@ function PlannedTab({
             انقر على الخلايا لتبديل الحالة: كليك يمين للتقليل،كليك شمال للزيادة،
           </p>
         </div>
-        <div className="overflow-x-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <div className="custom-scrollbar">
           <table
             className="w-full text-[10px] sm:text-xs border-collapse"
             style={{ minWidth: "1100px" }}
             dir="rtl"
           >
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800 shadow-sm h-10">
-                <th className="sticky right-0 top-0 z-30 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
+              <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
+                <th className="sticky right-0 top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                   البرنامج
                 </th>
                 {Array.from({ length: 31 }, (_, i) => (
                   <th
                     key={i}
-                    className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
+                    className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                   >
                     {i + 1}
                   </th>
                 ))}
-                <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
+                <th className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
                   استشارات
                 </th>
-                <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
+                <th className="sticky top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                   المجموع
                 </th>
               </tr>
@@ -3553,8 +3561,8 @@ function PlannedTab({
                     </td>
                   </tr>
                   {/* Weekday names row */}
-                  <tr className="bg-gray-100 dark:bg-gray-800 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                    <td className="sticky right-0 top-10 z-30 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                  <tr className="bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                    <td className="sticky right-0 top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                       يوم الأسبوع
                     </td>
                     {Array.from({ length: 31 }, (_, i) => {
@@ -3564,8 +3572,8 @@ function PlannedTab({
                         return (
                           <td
                             key={day}
-                            className="sticky top-10 z-20 bg-gray-50 dark:bg-gray-800 text-center border-r border-gray-100 dark:border-gray-700/30"
-                          />
+                            className="sticky top-[96px] md:top-[104px] z-30 bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
+                          >&nbsp;</td>
                         );
                       }
                       const d = new Date(calYear, calMonth, day);
@@ -3583,18 +3591,18 @@ function PlannedTab({
                       return (
                         <td
                           key={day}
-                          className={`sticky top-10 z-20 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                          className={`sticky top-[96px] md:top-[104px] z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
                             isWeekend
-                              ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 font-bold"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                              ? "bg-slate-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold"
+                              : "bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400"
                           }`}
                         >
                           {label}
                         </td>
                       );
                     })}
-                    <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
-                    <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
+                    <td className="sticky top-[96px] md:top-[104px] z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                    <td className="sticky top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
                   </tr>
                   {/* Program rows */}
                   {ALL_PLANNED_PROGRAMS.map((prog) => {
@@ -3618,11 +3626,14 @@ function PlannedTab({
                             localPlan?.[prog]?.[String(calMonth)]?.[
                               String(day)
                             ] ?? 0;
+                          const d = new Date(calYear, calMonth, day);
+                          const isWeekend = !isInvalid && (d.getDay() === 5 || d.getDay() === 6);
                           return (
                             <PlanCell
                               key={day}
                               value={val}
                               isInvalid={isInvalid}
+                              isWeekend={isWeekend}
                               onClick={(e) =>
                                 !isInvalid &&
                                 handleCellClick(
