@@ -35,8 +35,8 @@ export interface PlannedTimetableResponse {
 export interface CellUpdatePayload {
   program: string;
   monthIndex: number; // calendar month 0-11
-  day: number;        // 1-31
-  value: 0 | 0.5 | 1;
+  day: number | string;        // 1-31 or "consultations"
+  value: number;
 }
 
 // ─── Comparison Types ─────────────────────────────────────────────────────────

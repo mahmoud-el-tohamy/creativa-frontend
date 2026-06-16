@@ -230,6 +230,7 @@ export interface SessionsListResponse {
 export interface IProgramDayMap {
   [day: number]: number;
   monthTotal: number;
+  consultationTotal?: number;
 }
 
 export interface IMonthData {
