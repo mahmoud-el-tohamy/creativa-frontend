@@ -101,7 +101,7 @@ const TIMETABLE_PROGRAMS: TimetableProgram[] = [
   "Career development",
 ];
 
-// All 8 programs including Incubation & Consultation (planned timetable supports all 8)
+// All programs (planned timetable supports main programs)
 const ALL_PLANNED_PROGRAMS: string[] = [
   "Entrepreneurship / Technology transfer",
   "Awareness events",
@@ -109,7 +109,6 @@ const ALL_PLANNED_PROGRAMS: string[] = [
   "Freelancing coaches",
   "Hackathons / Competitions",
   "Career development",
-  "Consultation & Mentorship",
 ];
 
 // FY calendar months in order: May(4)→Apr(3)
@@ -245,6 +244,7 @@ function computeMonthlyTotal(
 interface SessionFilters {
   search: string;
   programName: string;
+  type: string;
   dateFrom: string;
   dateTo: string;
   fiscalYear: string;
@@ -306,7 +306,7 @@ type Action =
       type: "UPDATE_LOCAL_CELL";
       program: string;
       monthIndex: number;
-      day: number;
+      day: number | string;
       value: number;
     }
   | { type: "MARK_SAVED" }
@@ -322,6 +322,7 @@ type Action =
 const INITIAL_FILTERS: SessionFilters = {
   search: "",
   programName: "",
+  type: "",
   dateFrom: "",
   dateTo: "",
   fiscalYear: "",
@@ -2097,7 +2098,7 @@ function SessionsTab({
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
           <input
             type="text"
             placeholder="بحث باسم الجلسة..."
@@ -2110,6 +2111,19 @@ function SessionsTab({
             options={programOptions}
             onChange={(v) =>
               dispatch({ type: "SET_FILTER", key: "programName", value: v })
+            }
+          />
+          <CustomSelect
+            value={flt.type}
+            options={[
+              { value: "", label: "كل الأنواع" },
+              { value: "Training", label: "تدريب" },
+              { value: "Awareness Event", label: "فعالية توعوية" },
+              { value: "Incubation", label: "احتضان" },
+              { value: "Consultation", label: "استشارة" },
+            ]}
+            onChange={(v) =>
+              dispatch({ type: "SET_FILTER", key: "type", value: v })
             }
           />
           <CustomSelect
@@ -2683,7 +2697,7 @@ function TimetableTab({
             ))}
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-visible">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">
                 جدول التوقيت — {snap.fiscalYear}
@@ -2695,26 +2709,29 @@ function TimetableTab({
                 يوم كامل
               </p>
             </div>
-            <div className="overflow-x-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <div className="custom-scrollbar">
               <table
                 className="w-full text-[10px] sm:text-xs lg:text-sm border-collapse"
                 style={{ minWidth: "1100px" }}
                 dir="rtl"
               >
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-800 shadow-sm h-10">
-                    <th className="sticky right-0 top-0 z-30 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
+                  <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
+                    <th className="sticky right-0 top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                       البرنامج
                     </th>
                     {Array.from({ length: 31 }, (_, i) => (
                       <th
                         key={i}
-                        className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
+                        className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                       >
                         {i + 1}
                       </th>
                     ))}
-                    <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
+                    <th className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
+                      استشارات
+                    </th>
+                    <th className="sticky top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                       المجموع
                     </th>
                   </tr>
@@ -2726,15 +2743,15 @@ function TimetableTab({
                   >
                     <tr className="bg-blue-50 dark:bg-blue-950">
                       <td
-                        colSpan={33}
+                        colSpan={34}
                         className="sticky right-0 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
                       >
                         {monthData.monthName} {monthData.year}
                       </td>
                     </tr>
                     {/* Weekday names row */}
-                    <tr className="bg-gray-100 dark:bg-gray-800 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                      <td className="sticky right-0 top-10 z-30 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                    <tr className="bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                      <td className="sticky right-0 top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                         يوم الأسبوع
                       </td>
                       {Array.from({ length: 31 }, (_, i) => {
@@ -2744,8 +2761,8 @@ function TimetableTab({
                           return (
                             <td
                               key={day}
-                              className="sticky top-10 z-20 bg-gray-50 dark:bg-gray-800 text-center border-r border-gray-100 dark:border-gray-700/30"
-                            />
+                              className="sticky top-[96px] md:top-[104px] z-30 bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
+                            >&nbsp;</td>
                           );
                         }
                         const d = new Date(
@@ -2767,23 +2784,30 @@ function TimetableTab({
                         return (
                           <td
                             key={day}
-                            className={`sticky top-10 z-20 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                            className={`sticky top-[96px] md:top-[104px] z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
                               isWeekend
-                                ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 font-bold"
-                                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                                ? "bg-slate-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold"
+                                : "bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400"
                             }`}
                           >
                             {label}
                           </td>
                         );
                       })}
-                      <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
+                      <td className="sticky top-[96px] md:top-[104px] z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                      <td className="sticky top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
                     </tr>
                     {TIMETABLE_PROGRAMS.map((prog) => {
                       const progData = monthData.programs[prog] as
-                        | (Record<number, number> & { monthTotal: number })
+                        | (Record<number, number> & { monthTotal: number; consultationTotal?: number })
                         | undefined;
                       const color = TIMETABLE_PROGRAM_COLORS[prog];
+                      const consVal = progData?.consultationTotal ?? 0;
+                      const consDays = monthData.consultations?.[prog] ?? [];
+                      const tooltip = consDays.length > 0
+                        ? `تواريخ الاستشارات: ${consDays.join(", ")}`
+                        : undefined;
+
                       return (
                         <tr
                           key={prog}
@@ -2799,23 +2823,23 @@ function TimetableTab({
                             const day = i + 1;
                             const val = progData ? (progData[day] ?? 0) : 0;
                             const isInvalid = day > monthData.daysInMonth;
-                            const isConsultation =
-                              monthData.consultations?.[prog]?.includes(day);
+                            const d = new Date(monthData.year, monthData.monthIndex, day);
+                            const isWeekend = !isInvalid && (d.getDay() === 5 || d.getDay() === 6);
 
                             let cellClass = "";
                             if (isInvalid) {
                               cellClass = "bg-gray-50 dark:bg-gray-800/50";
                             } else if (val > 0) {
-                              if (isConsultation) {
-                                cellClass =
-                                  "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold";
-                              } else if (val === 0.5) {
+                              if (val === 0.5) {
                                 cellClass =
                                   "bg-amber-100 dark:bg-amber-800/30 text-amber-800 dark:text-amber-300 font-bold";
                               } else {
                                 cellClass =
                                   "bg-teal-100 dark:bg-teal-800/30 text-teal-800 dark:text-teal-300 font-bold";
                               }
+                            } else if (isWeekend) {
+                              cellClass =
+                                "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-gray-500 dark:text-gray-400";
                             }
 
                             return (
@@ -2824,23 +2848,28 @@ function TimetableTab({
                                 className={`text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 ${cellClass} relative`}
                                 title={
                                   val > 0
-                                    ? `${val} يوم${isConsultation ? " (استشارة)" : ""}`
+                                    ? `${val} يوم`
                                     : undefined
                                 }
                               >
                                 {!isInvalid && val > 0 ? (
-                                  <>
-                                    {val === 0.5 ? "½" : val}
-                                    {isConsultation && (
-                                      <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                                    )}
-                                  </>
+                                  val === 0.5 ? "½" : val
                                 ) : (
                                   ""
                                 )}
                               </td>
                             );
                           })}
+                          <td
+                            className={`text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 relative ${
+                              consVal > 0
+                                ? "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600"
+                            }`}
+                            title={tooltip}
+                          >
+                            {consVal > 0 ? (consVal === 0.5 ? "½" : consVal) : ""}
+                          </td>
                           <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40">
                             {progData?.monthTotal ?? 0}
                           </td>
@@ -2871,6 +2900,17 @@ function TimetableTab({
                           </td>
                         );
                       })}
+                      {(() => {
+                        const consTotal = TIMETABLE_PROGRAMS.reduce((sum, prog) => {
+                          const pd = monthData.programs[prog] as { consultationTotal?: number } | undefined;
+                          return sum + (pd?.consultationTotal ?? 0);
+                        }, 0);
+                        return (
+                          <td className="text-center h-6 text-[10px] text-gray-800 dark:text-gray-200 font-bold">
+                            {consTotal > 0 ? consTotal : ""}
+                          </td>
+                        );
+                      })()}
                       <td className="px-2 text-center text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-900">
                         {monthData.monthlyDays}
                       </td>
@@ -2913,15 +2953,15 @@ function TimetableTab({
                     return (
                       <tr
                         key={at.program}
-                        className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors"
+                        className="group hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors"
                       >
                         <td
-                          className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200"
+                          className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200 group-last:rounded-br-2xl"
                           style={{ borderRight: `3px solid ${color}` }}
                         >
                           {at.program}
                         </td>
-                        <td className="px-3 py-2.5 text-center font-bold text-blue-600 dark:text-blue-400">
+                        <td className="px-3 py-2.5 text-center font-bold text-blue-600 dark:text-gray-200">
                           {at.totalDays}
                         </td>
                         <td className="px-3 py-2.5 text-center text-gray-500 dark:text-gray-400">
@@ -2952,7 +2992,7 @@ function TimetableTab({
                         <td className="px-3 py-2.5 text-center text-gray-600 dark:text-gray-400">
                           {at.q4}
                         </td>
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-3 py-2.5 text-center group-last:rounded-bl-2xl">
                           <span
                             className={`text-xs font-bold ${remaining > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}
                           >
@@ -3103,6 +3143,7 @@ function ArchiveTab({
 interface PlanCellProps {
   value: number;
   isInvalid: boolean;
+  isWeekend?: boolean;
   onClick: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
@@ -3110,6 +3151,7 @@ interface PlanCellProps {
 const PlanCell = React.memo(function PlanCell({
   value,
   isInvalid,
+  isWeekend,
   onClick,
   onContextMenu,
 }: PlanCellProps) {
@@ -3118,8 +3160,9 @@ const PlanCell = React.memo(function PlanCell({
       <td className="border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 bg-gray-50 dark:bg-gray-800/50" />
     );
   }
-  let cellColorCls =
-    "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
+  let cellColorCls = isWeekend
+    ? "bg-slate-200 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-slate-300 dark:hover:bg-slate-600"
+    : "hover:bg-gray-100 dark:hover:bg-gray-700/30 text-gray-300 dark:text-gray-600";
   let label = "";
 
   if (value > 0) {
@@ -3172,7 +3215,7 @@ const PlanCell = React.memo(function PlanCell({
     }
   }
 
-  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? "font-bold " : ""}${cellColorCls}`;
+  const cellCls = `text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 cursor-pointer transition-colors select-none ${value > 0 ? "font-bold" : ""} ${cellColorCls}`;
   return (
     <td
       className={cellCls}
@@ -3301,16 +3344,17 @@ function PlannedTab({
       e: React.MouseEvent,
       program: string,
       monthIndex: number,
-      day: number,
+      day: number | string,
       currentVal: number,
       isRightClick: boolean,
     ) => {
       e.preventDefault(); // Prevent context menu on right click
       let next = currentVal;
+      const maxVal = day === "consultations" ? 20 : 5;
       if (isRightClick) {
         next = Math.max(0, currentVal - 0.5);
       } else {
-        next = Math.min(5, currentVal + 0.5);
+        next = Math.min(maxVal, currentVal + 0.5);
       }
 
       if (next !== currentVal) {
@@ -3481,7 +3525,7 @@ function PlannedTab({
       </div>
 
       {/* Calendar grid */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-visible">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">
             الخطة السنوية — {selectedPlannedFY}
@@ -3490,26 +3534,29 @@ function PlannedTab({
             انقر على الخلايا لتبديل الحالة: كليك يمين للتقليل،كليك شمال للزيادة،
           </p>
         </div>
-        <div className="overflow-x-auto max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <div className="custom-scrollbar">
           <table
             className="w-full text-[10px] sm:text-xs border-collapse"
             style={{ minWidth: "1100px" }}
             dir="rtl"
           >
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800 shadow-sm h-10">
-                <th className="sticky right-0 top-0 z-30 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
+              <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
+                <th className="sticky right-0 top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                   البرنامج
                 </th>
                 {Array.from({ length: 31 }, (_, i) => (
                   <th
                     key={i}
-                    className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
+                    className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                   >
                     {i + 1}
                   </th>
                 ))}
-                <th className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
+                <th className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
+                  استشارات
+                </th>
+                <th className="sticky top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                   المجموع
                 </th>
               </tr>
@@ -3522,15 +3569,15 @@ function PlannedTab({
                   {/* Month header */}
                   <tr className="bg-blue-50 dark:bg-blue-950">
                     <td
-                      colSpan={33}
+                      colSpan={34}
                       className="sticky right-0 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
                     >
                       {ARABIC_MONTH_NAMES[calMonth]} {calYear}
                     </td>
                   </tr>
                   {/* Weekday names row */}
-                  <tr className="bg-gray-100 dark:bg-gray-800 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                    <td className="sticky right-0 top-10 z-30 bg-gray-100 dark:bg-gray-800 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                  <tr className="bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                    <td className="sticky right-0 top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                       يوم الأسبوع
                     </td>
                     {Array.from({ length: 31 }, (_, i) => {
@@ -3540,8 +3587,8 @@ function PlannedTab({
                         return (
                           <td
                             key={day}
-                            className="sticky top-10 z-20 bg-gray-50 dark:bg-gray-800 text-center border-r border-gray-100 dark:border-gray-700/30"
-                          />
+                            className="sticky top-[96px] md:top-[104px] z-30 bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
+                          >&nbsp;</td>
                         );
                       }
                       const d = new Date(calYear, calMonth, day);
@@ -3559,21 +3606,23 @@ function PlannedTab({
                       return (
                         <td
                           key={day}
-                          className={`sticky top-10 z-20 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                          className={`sticky top-[96px] md:top-[104px] z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
                             isWeekend
-                              ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400 font-bold"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                              ? "bg-slate-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold"
+                              : "bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400"
                           }`}
                         >
                           {label}
                         </td>
                       );
                     })}
-                    <td className="sticky top-10 z-20 bg-gray-100 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/30" />
+                    <td className="sticky top-[96px] md:top-[104px] z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                    <td className="sticky top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
                   </tr>
                   {/* Program rows */}
                   {ALL_PLANNED_PROGRAMS.map((prog) => {
                     const color = TIMETABLE_PROGRAM_COLORS[prog] ?? "#E5E7EB";
+                    const consVal = localPlan?.[prog]?.[String(calMonth)]?.["consultations"] ?? 0;
                     return (
                       <tr
                         key={prog}
@@ -3592,11 +3641,14 @@ function PlannedTab({
                             localPlan?.[prog]?.[String(calMonth)]?.[
                               String(day)
                             ] ?? 0;
+                          const d = new Date(calYear, calMonth, day);
+                          const isWeekend = !isInvalid && (d.getDay() === 5 || d.getDay() === 6);
                           return (
                             <PlanCell
                               key={day}
                               value={val}
                               isInvalid={isInvalid}
+                              isWeekend={isWeekend}
                               onClick={(e) =>
                                 !isInvalid &&
                                 handleCellClick(
@@ -3622,6 +3674,30 @@ function PlannedTab({
                             />
                           );
                         })}
+                        <PlanCell
+                          value={consVal}
+                          isInvalid={false}
+                          onClick={(e) =>
+                            handleCellClick(
+                              e,
+                              prog,
+                              calMonth,
+                              "consultations",
+                              consVal,
+                              false,
+                            )
+                          }
+                          onContextMenu={(e) =>
+                            handleCellClick(
+                              e,
+                              prog,
+                              calMonth,
+                              "consultations",
+                              consVal,
+                              true,
+                            )
+                          }
+                        />
                         <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40 text-[10px]">
                           {monthTotals[prog]?.[calMonth] ?? 0}
                         </td>
@@ -3648,6 +3724,16 @@ function PlannedTab({
                         </td>
                       );
                     })}
+                    {(() => {
+                      const consTotal = ALL_PLANNED_PROGRAMS.reduce((sum, prog) => {
+                        return sum + (localPlan?.[prog]?.[String(calMonth)]?.["consultations"] ?? 0);
+                      }, 0);
+                      return (
+                        <td className="text-center h-6 text-[10px] text-gray-800 dark:text-gray-200 font-bold">
+                          {consTotal > 0 ? consTotal : ""}
+                        </td>
+                      );
+                    })()}
                     <td className="px-2 text-center text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-gray-900 text-[10px]">
                       {ALL_PLANNED_PROGRAMS.reduce(
                         (s, prog) => s + (monthTotals[prog]?.[calMonth] ?? 0),
@@ -4324,6 +4410,7 @@ function HoursPageContent() {
           sort: flt.sort,
           fiscalYear: flt.fiscalYear || undefined,
           programName: flt.programName || undefined,
+          type: flt.type || undefined,
           dateFrom: flt.dateFrom || undefined,
           dateTo: flt.dateTo || undefined,
         });

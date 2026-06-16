@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState, memo, useMemo } from "react";
 import Link from "next/link";
 import { BlacklistEntry } from "@/lib/blacklist";
 import api, { ChartDataBucket, hoursAPI, TrainingDashboardStats, createCancelToken, instructorsAPI } from "@/lib/api";
@@ -254,6 +254,7 @@ function DashboardTableSkeleton() {
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
+  const [managerView, setManagerView] = useState<"admin" | "accountant">("admin");
 
   if (loading) return null;
 
@@ -263,10 +264,49 @@ export default function Dashboard() {
     return <AccountantDashboard />;
   }
 
+  if (user.role === "admin") {
+    const switcher = (
+      <div className="bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1 w-full max-w-xs sm:max-w-sm">
+        <button
+          onClick={() => setManagerView("admin")}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+            managerView === "admin"
+              ? "bg-blue-600 text-white shadow-md"
+              : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          متابعة العمليات
+        </button>
+        <button
+          onClick={() => setManagerView("accountant")}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+            managerView === "accountant"
+              ? "bg-teal-600 text-white shadow-md"
+              : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          الماليات
+        </button>
+      </div>
+    );
+
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950" dir="rtl">
+        <div className="flex-1 animate-fade-in">
+          {managerView === "admin" ? (
+            <AdminEmployeeDashboard headerExtra={switcher} />
+          ) : (
+            <AccountantDashboard headerExtra={switcher} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return <AdminEmployeeDashboard />;
 }
 
-function AdminEmployeeDashboard() {
+function AdminEmployeeDashboard({ headerExtra }: { headerExtra?: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const canWrite = user?.role === "admin" || user?.role === "employee";
   
@@ -477,13 +517,16 @@ function AdminEmployeeDashboard() {
 
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-12 font-sans text-gray-900 dark:text-gray-100 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8 overflow-x-hidden">
-      <header>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400 tracking-tight">
-          لوحة التحكم (Dashboard)
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 text-lg mt-2">
-          نظرة عامة على إحصائيات البلاك ليست ونشاطات النظام
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400 tracking-tight">
+            لوحة التحكم (Dashboard)
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-lg mt-2">
+            نظرة عامة على إحصائيات البلاك ليست ونشاطات النظام
+          </p>
+        </div>
+        {headerExtra}
       </header>
 
       <div className="mb-6 h-[344px] sm:mb-8 sm:h-[200px] lg:h-14 overflow-hidden">
@@ -993,7 +1036,7 @@ function AdminEmployeeDashboard() {
 
 // ─── ACCOUNTANT DASHBOARD ─────────────────────────────────────────────────────
 
-const AccountantDashboard = memo(() => {
+const AccountantDashboard = memo(({ headerExtra }: { headerExtra?: React.ReactNode }) => {
   const [data, setData] = useState<AccountantDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodType>("year");
@@ -1001,6 +1044,18 @@ const AccountantDashboard = memo(() => {
   const [endDate, setEndDate] = useState<string>("");
   const [exportingSessions, setExportingSessions] = useState(false);
   const [exportingProfiles, setExportingProfiles] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 10;
+  const totalPages = Math.max(1, Math.ceil((data?.instructorSummaries.length || 0) / ITEMS_PER_PAGE));
+
+  const paginatedSummaries = useMemo(() => {
+    if (!data) return [];
+    return data.instructorSummaries.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+  }, [data, currentPage]);
 
   const handleExportSessions = async () => {
     try {
@@ -1051,7 +1106,10 @@ const AccountantDashboard = memo(() => {
     let isMounted = true;
     instructorsAPI.getAccountantDashboard(period, startDate, endDate)
       .then((res) => {
-        if (isMounted) setData(res.data.data);
+        if (isMounted) {
+          setData(res.data.data);
+          setCurrentPage(1);
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -1082,7 +1140,7 @@ const AccountantDashboard = memo(() => {
       );
     }
 
-    return data.instructorSummaries.map((i) => (
+    return paginatedSummaries.map((i) => (
       <tr key={i.instructorId} className={`border-b border-gray-50 last:border-0 dark:border-gray-700/50 ${!i.hasRates ? "bg-amber-50 dark:bg-amber-950/20" : ""}`}>
         <td className="px-6 py-4">
           <Link href={`/instructors/${i.instructorId}`} className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">
@@ -1126,6 +1184,7 @@ const AccountantDashboard = memo(() => {
             نظرة عامة على استحقاقات المدربين
           </p>
         </div>
+        {headerExtra}
       </header>
 
       {/* SECTION 2 — Alert Banner */}
@@ -1426,39 +1485,66 @@ const AccountantDashboard = memo(() => {
         {loading ? (
           <DashboardTableSkeleton />
         ) : (
-          <div className="overflow-x-auto min-h-[300px]">
-            <table className="w-full text-right text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400 whitespace-nowrap">
-                <tr>
-                  <th className="px-6 py-4 font-bold">المدرب</th>
-                  <th className="px-6 py-4 font-bold">الجلسات</th>
-                  <th className="px-6 py-4 font-bold">الساعات</th>
-                  <th className="px-6 py-4 font-bold">الأيام</th>
-                  <th className="px-6 py-4 font-bold">التدريب</th>
-                  <th className="px-6 py-4 font-bold">الاستشارات</th>
-                  <th className="px-6 py-4 font-bold text-teal-600 dark:text-teal-400">الإجمالي</th>
-                  <th className="px-6 py-4 font-bold">الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {renderTableRows()}
-              </tbody>
-              {data && data.instructorSummaries.length > 0 && (
-                <tfoot className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 font-bold text-gray-900 dark:text-gray-100">
+          <>
+            <div className="overflow-x-auto min-h-[300px]">
+              <table className="w-full text-right text-sm">
+                <thead className="border-b border-gray-100 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-400 whitespace-nowrap">
                   <tr>
-                    <td className="px-6 py-4 text-left">الإجمالي:</td>
-                    <td className="px-6 py-4">{data.totalSessions}</td>
-                    <td className="px-6 py-4">{data.totalHours}س</td>
-                    <td className="px-6 py-4">{data.instructorSummaries.reduce((sum, i) => sum + i.totalDays, 0)}</td>
-                    <td className="px-6 py-4">{formatCurrency(data.trainingPayable)}</td>
-                    <td className="px-6 py-4">{formatCurrency(data.consultationPayable)}</td>
-                    <td className="px-6 py-4 text-lg text-teal-600 dark:text-teal-400">{formatCurrency(data.totalPayable)}</td>
-                    <td className="px-6 py-4"></td>
+                    <th className="px-6 py-4 font-bold">المدرب</th>
+                    <th className="px-6 py-4 font-bold">الجلسات</th>
+                    <th className="px-6 py-4 font-bold">الساعات</th>
+                    <th className="px-6 py-4 font-bold">الأيام</th>
+                    <th className="px-6 py-4 font-bold">التدريب</th>
+                    <th className="px-6 py-4 font-bold">الاستشارات</th>
+                    <th className="px-6 py-4 font-bold text-teal-600 dark:text-teal-400">الإجمالي</th>
+                    <th className="px-6 py-4 font-bold">الحالة</th>
                   </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {renderTableRows()}
+                </tbody>
+                {data && data.instructorSummaries.length > 0 && (
+                  <tfoot className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 font-bold text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <td className="px-6 py-4 text-left">الإجمالي:</td>
+                      <td className="px-6 py-4">{data.totalSessions}</td>
+                      <td className="px-6 py-4">{data.totalHours}س</td>
+                      <td className="px-6 py-4">{data.instructorSummaries.reduce((sum, i) => sum + i.totalDays, 0)}</td>
+                      <td className="px-6 py-4">{formatCurrency(data.trainingPayable)}</td>
+                      <td className="px-6 py-4">{formatCurrency(data.consultationPayable)}</td>
+                      <td className="px-6 py-4 text-lg text-teal-600 dark:text-teal-400">{formatCurrency(data.totalPayable)}</td>
+                      <td className="px-6 py-4"></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {data && data.instructorSummaries.length > ITEMS_PER_PAGE && (
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-800/10">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  صفحة {currentPage} من {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                  >
+                    السابق
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                  >
+                    التالي
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>
