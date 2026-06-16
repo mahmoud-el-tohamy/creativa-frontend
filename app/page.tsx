@@ -265,34 +265,39 @@ export default function Dashboard() {
   }
 
   if (user.role === "admin") {
+    const switcher = (
+      <div className="bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1 w-full max-w-xs sm:max-w-sm">
+        <button
+          onClick={() => setManagerView("admin")}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+            managerView === "admin"
+              ? "bg-blue-600 text-white shadow-md"
+              : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          متابعة العمليات
+        </button>
+        <button
+          onClick={() => setManagerView("accountant")}
+          className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+            managerView === "accountant"
+              ? "bg-teal-600 text-white shadow-md"
+              : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          الماليات
+        </button>
+      </div>
+    );
+
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950" dir="rtl">
-        <div className="pt-6 px-4 sm:px-6 lg:px-8 max-w-[1600px] w-full mx-auto pb-2 flex justify-center">
-          <div className="bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-1 w-full max-w-sm">
-            <button
-              onClick={() => setManagerView("admin")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all duration-300 ${
-                managerView === "admin"
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-            >
-              متابعة العمليات
-            </button>
-            <button
-              onClick={() => setManagerView("accountant")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all duration-300 ${
-                managerView === "accountant"
-                  ? "bg-teal-600 text-white shadow-md"
-                  : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-            >
-              الماليات
-            </button>
-          </div>
-        </div>
         <div className="flex-1 animate-fade-in">
-          {managerView === "admin" ? <AdminEmployeeDashboard /> : <AccountantDashboard />}
+          {managerView === "admin" ? (
+            <AdminEmployeeDashboard headerExtra={switcher} />
+          ) : (
+            <AccountantDashboard headerExtra={switcher} />
+          )}
         </div>
       </div>
     );
@@ -301,7 +306,7 @@ export default function Dashboard() {
   return <AdminEmployeeDashboard />;
 }
 
-function AdminEmployeeDashboard() {
+function AdminEmployeeDashboard({ headerExtra }: { headerExtra?: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const canWrite = user?.role === "admin" || user?.role === "employee";
   
@@ -512,13 +517,16 @@ function AdminEmployeeDashboard() {
 
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-12 font-sans text-gray-900 dark:text-gray-100 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8 overflow-x-hidden">
-      <header>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400 tracking-tight">
-          لوحة التحكم (Dashboard)
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 text-lg mt-2">
-          نظرة عامة على إحصائيات البلاك ليست ونشاطات النظام
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 dark:text-blue-400 tracking-tight">
+            لوحة التحكم (Dashboard)
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-lg mt-2">
+            نظرة عامة على إحصائيات البلاك ليست ونشاطات النظام
+          </p>
+        </div>
+        {headerExtra}
       </header>
 
       <div className="mb-6 h-[344px] sm:mb-8 sm:h-[200px] lg:h-14 overflow-hidden">
@@ -1028,7 +1036,7 @@ function AdminEmployeeDashboard() {
 
 // ─── ACCOUNTANT DASHBOARD ─────────────────────────────────────────────────────
 
-const AccountantDashboard = memo(() => {
+const AccountantDashboard = memo(({ headerExtra }: { headerExtra?: React.ReactNode }) => {
   const [data, setData] = useState<AccountantDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodType>("year");
@@ -1176,6 +1184,7 @@ const AccountantDashboard = memo(() => {
             نظرة عامة على استحقاقات المدربين
           </p>
         </div>
+        {headerExtra}
       </header>
 
       {/* SECTION 2 — Alert Banner */}

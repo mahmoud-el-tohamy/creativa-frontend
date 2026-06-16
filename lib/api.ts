@@ -209,6 +209,7 @@ export interface SessionsParams {
   dateFrom?: string;
   dateTo?: string;
   mode?: string;
+  type?: string;
   page?: number;
   limit?: number;
   sort?: "newest" | "oldest" | "name";
@@ -648,6 +649,49 @@ export const instructorsAPI = {
   exportAccountantSessions: (period: PeriodType, startDate?: string, endDate?: string) =>
     api.get(`/instructors/export/sessions`,
       { params: { period, startDate, endDate }, responseType: "blob" }),
+};
+
+// ─── Finance API ──────────────────────────────────────────────────────────────
+
+export interface IFinancialSession {
+  _id: string;
+  sessionDate: string;
+  daysCount: number;
+  sessionType: string;
+  sessionName: string;
+  program: string;
+  attendance: number;
+  instructorName: string;
+  dailyRate: number;
+  totalCost: number;
+  cvLink: string;
+  reportLink: string;
+}
+
+export interface IFinancialPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export const financeAPI = {
+  getInstructorFinancials: (params?: {
+    startDate?: string;
+    endDate?: string;
+    instructorName?: string;
+    period?: string;
+    sessionType?: string;
+    programName?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    api.get<{
+      success: boolean;
+      data: IFinancialSession[];
+      totalCostSum: number;
+      pagination: IFinancialPagination;
+    }>("/finance/instructor-sessions", { params }),
 };
 
 

@@ -244,6 +244,7 @@ function computeMonthlyTotal(
 interface SessionFilters {
   search: string;
   programName: string;
+  type: string;
   dateFrom: string;
   dateTo: string;
   fiscalYear: string;
@@ -321,6 +322,7 @@ type Action =
 const INITIAL_FILTERS: SessionFilters = {
   search: "",
   programName: "",
+  type: "",
   dateFrom: "",
   dateTo: "",
   fiscalYear: "",
@@ -2096,7 +2098,7 @@ function SessionsTab({
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
           <input
             type="text"
             placeholder="بحث باسم الجلسة..."
@@ -2109,6 +2111,19 @@ function SessionsTab({
             options={programOptions}
             onChange={(v) =>
               dispatch({ type: "SET_FILTER", key: "programName", value: v })
+            }
+          />
+          <CustomSelect
+            value={flt.type}
+            options={[
+              { value: "", label: "كل الأنواع" },
+              { value: "Training", label: "تدريب" },
+              { value: "Awareness Event", label: "فعالية توعوية" },
+              { value: "Incubation", label: "احتضان" },
+              { value: "Consultation", label: "استشارة" },
+            ]}
+            onChange={(v) =>
+              dispatch({ type: "SET_FILTER", key: "type", value: v })
             }
           />
           <CustomSelect
@@ -4395,6 +4410,7 @@ function HoursPageContent() {
           sort: flt.sort,
           fiscalYear: flt.fiscalYear || undefined,
           programName: flt.programName || undefined,
+          type: flt.type || undefined,
           dateFrom: flt.dateFrom || undefined,
           dateTo: flt.dateTo || undefined,
         });
