@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { financeAPI, IFinancialSession, IFinancialPagination } from "@/lib/api";
-import * as XLSX from "xlsx";
 import Link from "next/link";
 
 const PAGE_SIZE = 20;
@@ -113,8 +112,7 @@ export default function FinancialTrackingPage() {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      // Fetch ALL matching results (no pagination) using the currently applied filters
-      const params: Record<string, string | number> = { page: 1, limit: 9999 };
+      const params: Record<string, string | number> = {};
       if (appliedFilters.period && appliedFilters.period !== "all") params.period = appliedFilters.period;
       if (appliedFilters.period === "all" || !appliedFilters.period) {
         if (appliedFilters.startDate) params.startDate = appliedFilters.startDate;
@@ -124,33 +122,15 @@ export default function FinancialTrackingPage() {
       if (appliedFilters.sessionType && appliedFilters.sessionType !== "all") params.sessionType = appliedFilters.sessionType;
       if (appliedFilters.programName && appliedFilters.programName !== "all") params.programName = appliedFilters.programName;
 
-      const res = await financeAPI.getInstructorFinancials(params as Parameters<typeof financeAPI.getInstructorFinancials>[0]);
-      const allData = res.data.success ? res.data.data : [];
-
-      const exportData = allData.map((item) => ({
-        "تاريخ التدريب": new Date(item.sessionDate).toLocaleDateString("en-GB"),
-        "عدد الأيام": item.daysCount,
-        "نوع التدريب": item.sessionType,
-        "اسم التدريب": item.sessionName,
-        "البرنامج التدريبي": item.program,
-        "عدد الحضور": item.attendance,
-        "اسم المدرب": item.instructorName,
-        "تكلفة اليوم للمدرب": item.dailyRate,
-        "إجمالي اليوم للمدرب": item.totalCost,
-        "لينك السيرة الذاتية": item.cvLink,
-        "لينك تقرير البرنامج": item.reportLink,
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      // Auto-fit column widths
-      const colWidths = Object.keys(exportData[0] ?? {}).map((key) => ({
-        wch: Math.max(key.length + 2, ...exportData.map((r) => String((r as Record<string, unknown>)[key] ?? "").length + 2)),
-      }));
-      ws["!cols"] = colWidths;
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "جلسات الفترة");
-      XLSX.writeFile(wb, "جلسات_الفترة.xlsx");
+      const res = await financeAPI.exportInstructorFinancials(params);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "جلسات_الفترة.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error exporting data:", error);
     } finally {
