@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
           ? 'http://localhost:5000/api/:path*'
           : 'https://creativa-backend.vercel.app/api/:path*',
       },
+      {
+        source: '/uploads/:path*',
+        destination: process.env.NODE_ENV === 'development'
+          ? 'http://localhost:5000/uploads/:path*'
+          : 'https://creativa-backend.vercel.app/uploads/:path*',
+      },
     ]
   },
   // PERF: Add cache headers for static and API responses

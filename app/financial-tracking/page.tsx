@@ -147,7 +147,7 @@ export default function FinancialTrackingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-6">
       <div className="mx-auto max-w-7xl">
 
         {/* Header */}
