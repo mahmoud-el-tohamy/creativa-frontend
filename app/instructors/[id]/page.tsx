@@ -2,7 +2,7 @@
 
 import React, { useEffect, useReducer, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import RouteGuard from "@/components/RouteGuard";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -626,7 +626,16 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                               ))}
                             </Pie>
                             <Tooltip 
-                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                borderRadius: '12px', 
+                                border: '1px solid rgba(75, 85, 99, 0.3)', 
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                                color: '#f3f4f6',
+                                direction: 'rtl'
+                              }}
+                              itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                              labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
                               // eslint-disable-next-line @typescript-eslint/no-explicit-any
                               formatter={(value: any, name: any, props: any) => {
                                 const amountText = canSeeRates && props.payload.totalAmount > 0 
@@ -717,6 +726,70 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
 
+            {/* CHARTS ROW 2: Type Breakdown */}
+            {dashboard.totalSessions > 0 && dashboard.typeBreakdown && dashboard.typeBreakdown.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">عدد الجلسات حسب نوع التدريب</h3>
+                  <div className="h-64">
+                    {isMounted && (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                          <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
+                          <Tooltip 
+                            cursor={{ fill: 'rgba(107, 114, 128, 0.1)' }} 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(75, 85, 99, 0.3)', 
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                              color: '#f3f4f6',
+                              direction: 'rtl'
+                            }}
+                            itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
+                            labelFormatter={(label) => label === "Consultation" ? "استشارة" : label === "Training" ? "تدريب" : label}
+                          />
+                          <Bar dataKey="sessions" name="عدد الجلسات" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">عدد الساعات حسب نوع التدريب</h3>
+                  <div className="h-64">
+                    {isMounted && (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                          <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                          <Tooltip 
+                            cursor={{ fill: 'rgba(107, 114, 128, 0.1)' }} 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(75, 85, 99, 0.3)', 
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                              color: '#f3f4f6',
+                              direction: 'rtl'
+                            }}
+                            itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
+                            labelFormatter={(label) => label === "Consultation" ? "استشارة" : label === "Training" ? "تدريب" : label}
+                          />
+                          <Bar dataKey="hours" name="عدد الساعات" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* SESSIONS TABLE */}
             {dashboard.sessions.length > 0 && (
               <div className="mt-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -730,7 +803,8 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                         <th className="px-4 py-3 w-12 text-center">#</th>
                         <th className="px-4 py-3">التاريخ</th>
                         <th className="px-4 py-3 min-w-[200px]">اسم الجلسة</th>
-                        <th className="px-4 py-3">البرنامج</th>
+                        <th className="px-4 py-3 whitespace-nowrap">النوع</th>
+                        <th className="px-4 py-3 whitespace-nowrap">البرنامج</th>
                         <th className="px-4 py-3 text-center">الساعات</th>
                         <th className="px-4 py-3 text-center">أيام العمل</th>
                         <th className="px-4 py-3 text-center">الحضور</th>
@@ -752,14 +826,26 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                             key={session._id} 
                             className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors
                               ${isConsultation ? "border-r-4 border-r-amber-400" : ""}
-                              ${isZeroAmount ? "text-gray-400 dark:text-gray-500" : "text-gray-800 dark:text-gray-200"}
+                              ${session.isPaid === false ? "bg-red-50/20 dark:bg-red-900/10 text-gray-400 dark:text-gray-500 hover:bg-red-50/40 dark:hover:bg-red-900/20" : (isZeroAmount ? "text-gray-400 dark:text-gray-500" : "text-gray-800 dark:text-gray-200")}
                             `}
                           >
                             <td className="px-4 py-3 text-center font-medium">{index + 1}</td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               {session.dateFrom === session.dateTo ? session.date : `${session.dateFrom} - ${session.dateTo}`}
                             </td>
-                            <td className="px-4 py-3 font-semibold">{session.sessionName}</td>
+                            <td className="px-4 py-3 font-semibold">
+                              {session.sessionName}
+                              {session.isPaid === false && (
+                                <span className="mr-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                                  غير مدفوع
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-xs font-bold whitespace-nowrap">
+                              <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-2 py-1 rounded-md">
+                                {session.type === "Consultation" ? "استشارة" : session.type === "Training" ? "تدريب" : session.type}
+                              </span>
+                            </td>
                             <td className="px-4 py-3 text-xs font-bold">
                               <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">{session.programName}</span>
                             </td>
@@ -784,7 +870,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                       })}
                       {/* TOTALS ROW */}
                       <tr className="bg-gray-50 dark:bg-gray-700/50 font-black text-gray-900 dark:text-white border-t-2 border-gray-200 dark:border-gray-600">
-                        <td colSpan={4} className="px-4 py-4 text-left">الإجمالي</td>
+                        <td colSpan={5} className="px-4 py-4 text-left">الإجمالي</td>
                         <td className="px-4 py-4 text-center">{dashboard.totalHours}</td>
                         <td className="px-4 py-4 text-center">{dashboard.totalDays}</td>
                         <td className="px-4 py-4 text-center">{dashboard.sessions.reduce((acc, s) => acc + s.attendeesCount, 0)}</td>

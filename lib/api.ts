@@ -168,7 +168,8 @@ export interface TrainingSession {
   date: string;
   hours: number;
   mode: "online" | "offline";
-  instructorId: string | null; // FIXED: FIX 3 — optional
+  isPaid: boolean;
+  instructorId: string | null;
   instructorName: string;
   attendeesCount: number;
   type: "Training" | "Awareness Event" | "Incubation" | "Consultation";
@@ -188,6 +189,7 @@ export interface TrainingSessionPayload {
   date: string;
   hours: number;
   mode: "online" | "offline";
+  isPaid: boolean;
   instructorId: string; // empty string means no instructor selected
   instructorName: string;
   attendeesCount: number;
@@ -666,6 +668,7 @@ export interface IFinancialSession {
   totalCost: number;
   cvLink: string;
   reportLink: string;
+  isPaid: boolean;
 }
 
 export interface IFinancialPagination {
@@ -676,22 +679,18 @@ export interface IFinancialPagination {
 }
 
 export const financeAPI = {
-  getInstructorFinancials: (params?: {
-    startDate?: string;
-    endDate?: string;
-    instructorName?: string;
-    period?: string;
-    sessionType?: string;
-    programName?: string;
-    page?: number;
-    limit?: number;
-  }) =>
+  getInstructorFinancials: (params: Record<string, string | number>) =>
     api.get<{
       success: boolean;
       data: IFinancialSession[];
       totalCostSum: number;
       pagination: IFinancialPagination;
     }>("/finance/instructor-sessions", { params }),
+  exportInstructorFinancials: (params: Record<string, string | number>) =>
+    api.get<Blob>("/finance/export-instructor-sessions", {
+      params,
+      responseType: "blob",
+    }),
 };
 
 
