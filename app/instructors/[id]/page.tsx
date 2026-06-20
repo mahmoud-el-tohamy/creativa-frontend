@@ -626,7 +626,16 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                               ))}
                             </Pie>
                             <Tooltip 
-                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                borderRadius: '12px', 
+                                border: '1px solid rgba(75, 85, 99, 0.3)', 
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                                color: '#f3f4f6',
+                                direction: 'rtl'
+                              }}
+                              itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                              labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
                               // eslint-disable-next-line @typescript-eslint/no-explicit-any
                               formatter={(value: any, name: any, props: any) => {
                                 const amountText = canSeeRates && props.payload.totalAmount > 0 
@@ -729,7 +738,20 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                           <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
-                          <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
+                          <Tooltip 
+                            cursor={{ fill: 'rgba(107, 114, 128, 0.1)' }} 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(75, 85, 99, 0.3)', 
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                              color: '#f3f4f6',
+                              direction: 'rtl'
+                            }}
+                            itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
+                            labelFormatter={(label) => label === "Consultation" ? "استشارة" : label === "Training" ? "تدريب" : label}
+                          />
                           <Bar dataKey="sessions" name="عدد الجلسات" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={50} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -745,7 +767,20 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                           <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                          <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
+                          <Tooltip 
+                            cursor={{ fill: 'rgba(107, 114, 128, 0.1)' }} 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(75, 85, 99, 0.3)', 
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                              color: '#f3f4f6',
+                              direction: 'rtl'
+                            }}
+                            itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
+                            labelFormatter={(label) => label === "Consultation" ? "استشارة" : label === "Training" ? "تدريب" : label}
+                          />
                           <Bar dataKey="hours" name="عدد الساعات" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={50} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -835,7 +870,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                       })}
                       {/* TOTALS ROW */}
                       <tr className="bg-gray-50 dark:bg-gray-700/50 font-black text-gray-900 dark:text-white border-t-2 border-gray-200 dark:border-gray-600">
-                        <td colSpan={4} className="px-4 py-4 text-left">الإجمالي</td>
+                        <td colSpan={5} className="px-4 py-4 text-left">الإجمالي</td>
                         <td className="px-4 py-4 text-center">{dashboard.totalHours}</td>
                         <td className="px-4 py-4 text-center">{dashboard.totalDays}</td>
                         <td className="px-4 py-4 text-center">{dashboard.sessions.reduce((acc, s) => acc + s.attendeesCount, 0)}</td>

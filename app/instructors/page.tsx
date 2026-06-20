@@ -62,6 +62,9 @@ function InstructorsContent() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 15;
 
   
   const [modalOpen, setModalOpen] = useState(false);
@@ -94,6 +97,7 @@ function InstructorsContent() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
+      setPage(1); // Reset page on search
     }, 250);
     return () => clearTimeout(handler);
   }, [search]);
@@ -107,10 +111,14 @@ function InstructorsContent() {
         search: debouncedSearch || undefined,
         specialization: selectedSpecializations.length > 0 ? selectedSpecializations.join(",") : undefined,
         includeInactive: false,
-        limit: 1000, // Fetch all for now, or implement pagination
+        page,
+        limit,
       });
       if (res.data.success) {
         setInstructors(res.data.data);
+        if (res.data.pagination) {
+          setTotalPages(res.data.pagination.totalPages);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch instructors", error);
@@ -125,7 +133,7 @@ function InstructorsContent() {
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, selectedSpecializations]);
+  }, [debouncedSearch, selectedSpecializations, page]);
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,6 +234,7 @@ function InstructorsContent() {
               onClick={() => {
                 setSearch("");
                 setSelectedSpecializations([]);
+                setPage(1);
               }}
               className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800/50"
               title="إعادة ضبط الفلاتر"
@@ -428,6 +437,49 @@ function InstructorsContent() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        {!loading && totalPages > 1 && (
+          <div className="mt-8 flex justify-center items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="السابق"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <div className="flex gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${
+                    page === p
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+                      : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="التالي"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
           </div>
         )}
       </div>
