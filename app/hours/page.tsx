@@ -514,6 +514,7 @@ const EMPTY_FORM: TrainingSessionPayload = {
   date: "",
   hours: 1,
   mode: "online",
+  isPaid: true,
   instructorId: "",
   instructorName: "",
   attendeesCount: 0,
@@ -550,6 +551,7 @@ function SessionModal({
           date: editing.date.split("T")[0],
           hours: editing.hours,
           mode: editing.mode,
+          isPaid: editing.isPaid ?? true,
           instructorId: editing.instructorId ?? "",
           instructorName: editing.instructorName,
           attendeesCount: editing.attendeesCount,
@@ -873,6 +875,36 @@ function SessionModal({
               </div>
             </div>
             <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                مدفوع / غير مدفوع
+              </label>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`text-sm font-medium ${!form.isPaid ? "text-red-600 dark:text-red-400" : "text-gray-400"}`}
+                >
+                  غير مدفوع
+                </span>
+                <ToggleSwitch
+                  checked={form.isPaid}
+                  onChange={() =>
+                    setForm((f) => ({
+                      ...f,
+                      isPaid: !f.isPaid,
+                    }))
+                  }
+                  title="مدفوع / غير مدفوع"
+                />
+                <span
+                  className={`text-sm font-medium ${form.isPaid ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}
+                >
+                  مدفوع
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 عدد الحضور
               </label>
@@ -889,59 +921,58 @@ function SessionModal({
                 className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              المدرب (اختياري)
-            </label>
-            <CustomSelect
-              value={form.instructorId}
-              options={instructorOptions}
-              searchable={true}
-              onChange={(v) => {
-                if (v === "__add__") {
-                  setAddingInstructor(true);
-                } else {
-                  const instr = instructors.find((i) => i._id === v);
-                  setForm((f) => ({
-                    ...f,
-                    instructorId: v,
-                    instructorName: instr?.name ?? "",
-                  }));
-                  setAddingInstructor(false);
-                }
-              }}
-            />
-            {errors.instructorId && (
-              <p className="text-xs text-red-500 mt-1">{errors.instructorId}</p>
-            )}
-            {addingInstructor && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="text"
-                  value={newInstructorName}
-                  onChange={(e) => setNewInstructorName(e.target.value)}
-                  placeholder="اسم المدرب الجديد..."
-                  className="flex-1 px-3 py-2 rounded-xl border border-teal-400 dark:border-teal-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-                <button
-                  type="button"
-                  disabled={savingInstructor}
-                  onClick={handleSaveInstructor}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors"
-                >
-                  {savingInstructor ? "جاري..." : "حفظ"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddingInstructor(false)}
-                  className="px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl hover:opacity-80 transition-colors"
-                >
-                  إلغاء
-                </button>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                المدرب (اختياري)
+              </label>
+              <CustomSelect
+                value={form.instructorId}
+                options={instructorOptions}
+                searchable={true}
+                onChange={(v) => {
+                  if (v === "__add__") {
+                    setAddingInstructor(true);
+                  } else {
+                    const instr = instructors.find((i) => i._id === v);
+                    setForm((f) => ({
+                      ...f,
+                      instructorId: v,
+                      instructorName: instr?.name ?? "",
+                    }));
+                    setAddingInstructor(false);
+                  }
+                }}
+              />
+              {errors.instructorId && (
+                <p className="text-xs text-red-500 mt-1">{errors.instructorId}</p>
+              )}
+              {addingInstructor && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={newInstructorName}
+                    onChange={(e) => setNewInstructorName(e.target.value)}
+                    placeholder="اسم المدرب الجديد..."
+                    className="flex-1 px-3 py-2 rounded-xl border border-teal-400 dark:border-teal-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingInstructor}
+                    onClick={handleSaveInstructor}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors"
+                  >
+                    {savingInstructor ? "جاري..." : "حفظ"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAddingInstructor(false)}
+                    className="px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl hover:opacity-80 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -2282,7 +2313,7 @@ function SessionsTab({
                 sessions.map((s) => (
                   <tr
                     key={s._id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={`transition-colors ${s.isPaid === false ? "bg-red-50/30 dark:bg-red-900/10 text-gray-400 dark:text-gray-500 hover:bg-red-50/50 dark:hover:bg-red-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700/50"}`}
                   >
                     <td className="px-3 py-2.5">
                       <input
@@ -2306,6 +2337,11 @@ function SessionsTab({
                     </td>
                     <td className="px-3 py-2.5 text-gray-800 dark:text-gray-200 max-w-[180px] truncate">
                       {s.sessionName}
+                      {s.isPaid === false && (
+                        <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                          غير مدفوع
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {formatDate(s.date)}

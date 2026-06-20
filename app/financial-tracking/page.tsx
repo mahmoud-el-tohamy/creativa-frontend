@@ -362,7 +362,7 @@ export default function FinancialTrackingPage() {
                   </tr>
                 ) : (
                   data.map((item) => (
-                    <tr key={item._id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <tr key={item._id} className={`transition-colors ${item.isPaid === false ? "bg-red-50/30 dark:bg-red-900/10 text-gray-400 dark:text-gray-500 hover:bg-red-50/50 dark:hover:bg-red-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700/50"}`}>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 dark:text-gray-100">
                         {new Date(item.sessionDate).toLocaleDateString("en-GB")}
                       </td>
@@ -372,7 +372,14 @@ export default function FinancialTrackingPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{item.sessionType}</td>
-                      <td className="px-4 py-3 line-clamp-2" title={item.sessionName}>{item.sessionName}</td>
+                      <td className="px-4 py-3 line-clamp-2" title={item.sessionName}>
+                        {item.sessionName}
+                        {item.isPaid === false && (
+                          <span className="mr-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                            غير مدفوع
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{item.program}</td>
                       <td className="px-4 py-3 text-center">{item.attendance}</td>
                       <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{item.instructorName}</td>

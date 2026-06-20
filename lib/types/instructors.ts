@@ -55,6 +55,7 @@ export interface InstructorSessionRow {
   unitRate: number;
   sessionAmount: number;
   isConsultation: boolean;
+  isPaid: boolean;
 }
 
 export interface InstructorDashboardData {
@@ -71,6 +72,12 @@ export interface InstructorDashboardData {
   offlinePct: number;
   programBreakdown: {
     program: string;
+    hours: number;
+    sessions: number;
+    totalAmount: number;
+  }[];
+  typeBreakdown: {
+    type: string;
     hours: number;
     sessions: number;
     totalAmount: number;
