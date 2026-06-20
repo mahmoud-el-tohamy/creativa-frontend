@@ -61,6 +61,7 @@ function InstructorsContent() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   
   const [modalOpen, setModalOpen] = useState(false);
@@ -235,6 +236,28 @@ function InstructorsContent() {
               إعادة ضبط
             </button>
           )}
+
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-lg flex items-center justify-center transition-all ${viewMode === "grid" ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`}
+              title="عرض كشبكة"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={`p-2 rounded-lg flex items-center justify-center transition-all ${viewMode === "table" ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`}
+              title="عرض كجدول"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* INSTRUCTORS GRID */}
@@ -262,7 +285,7 @@ function InstructorsContent() {
               </button>
             )}
           </div>
-        ) : (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {instructors.map((instructor) => {
               const avatarColor = generateAvatarColor(instructor.name);
@@ -330,6 +353,81 @@ function InstructorsContent() {
                 </div>
               );
             })}
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-right text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 w-12 text-center">#</th>
+                    <th className="px-4 py-3">اسم المدرب</th>
+                    <th className="px-4 py-3">التخصص</th>
+                    <th className="px-4 py-3 text-center">تاريخ الخبرة</th>
+                    <th className="px-4 py-3 text-center">رابط السي في</th>
+                    {canSeeRates && (
+                      <>
+                        <th className="px-4 py-3 text-center">تكلفة اليوم التدريبي</th>
+                        <th className="px-4 py-3 text-center">تكلفة اليوم الاستشاري</th>
+                        <th className="px-4 py-3 text-center">سعر الساعة التدريبية</th>
+                        <th className="px-4 py-3 text-center">سعر الساعة الاستشارية</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {instructors.map((instructor, index) => (
+                    <tr key={instructor.id || instructor._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-3 text-center font-medium text-gray-500 dark:text-gray-400">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                        <Link href={`/instructors/${instructor.id || instructor._id}`} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                          {instructor.name}
+                        </Link>
+                        {!instructor.isActive && (
+                          <span className="mr-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                            غير نشط
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(instructor.specializations || []).map((spec, i) => (
+                            <span key={i} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                              {spec}
+                            </span>
+                          ))}
+                          {(instructor.specializations || []).length === 0 && (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300">
+                        {instructor.graduationYear || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {instructor.cvLink ? (
+                          <a href={instructor.cvLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-lg transition-colors" title="عرض السيرة الذاتية">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      {canSeeRates && (
+                        <>
+                          <td className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">{instructor.dailyTrainingRate > 0 ? `${instructor.dailyTrainingRate} ج` : "—"}</td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">{instructor.dailyConsultationRate > 0 ? `${instructor.dailyConsultationRate} ج` : "—"}</td>
+                          <td className="px-4 py-3 text-center font-bold text-teal-600 dark:text-teal-400">{instructor.hourlyTrainingRate > 0 ? `${instructor.hourlyTrainingRate} ج` : "—"}</td>
+                          <td className="px-4 py-3 text-center font-bold text-teal-600 dark:text-teal-400">{instructor.hourlyConsultationRate > 0 ? `${instructor.hourlyConsultationRate} ج` : "—"}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
