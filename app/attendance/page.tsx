@@ -295,7 +295,7 @@ export default function Home() {
 
   return (
     <RouteGuard allowedRoles={["admin", "employee"]}>
-    <main className="flex-1 bg-transparent dark:bg-transparent text-gray-900 dark:text-gray-100 p-6 sm:p-12 font-sans w-full relative min-h-screen">
+    <main className="flex-1 bg-transparent dark:bg-transparent text-gray-900 dark:text-gray-100 p-6 sm:p-12 font-sans w-full relative">
       <ReviewWarningsModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}

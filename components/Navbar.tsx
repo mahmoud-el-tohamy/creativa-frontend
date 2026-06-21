@@ -409,8 +409,12 @@ export default function Navbar() {
                     aria-expanded={isUserDropdownOpen}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                      {user.displayName?.charAt(0) || "؟"}
+                    <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                      {user.profilePicture ? (
+                        <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        user.displayName?.charAt(0) || "؟"
+                      )}
                     </div>
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[110px] truncate">
                       {user.displayName}
@@ -432,9 +436,31 @@ export default function Navbar() {
                       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                         <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
                       </div>
+                      
+                      <Link 
+                        href="/profile"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 font-semibold transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        </svg>
+                        الملف الشخصي
+                      </Link>
+
+                      {/* Theme Selection */}
+                      <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-2">المظهر</p>
+                        <div className="flex gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+                          <button onClick={() => setTheme('light')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${theme === 'light' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-gray-800'}`}>مضيء</button>
+                          <button onClick={() => setTheme('dark')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${theme === 'dark' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-gray-800'}`}>داكن</button>
+                          <button onClick={() => setTheme('system')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${theme === 'system' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-gray-800'}`}>النظام</button>
+                        </div>
+                      </div>
+
                       <button
                         onClick={() => { setIsUserDropdownOpen(false); signOut(); }}
-                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-3 border-t border-gray-100 dark:border-gray-700 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -447,24 +473,7 @@ export default function Navbar() {
               ) : null
             )}
 
-            {/* Dark mode toggle */}
-            {mounted && (
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none"
-                aria-label="Toggle Dark Mode"
-              >
-                {theme === "dark" ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-                  </svg>
-                )}
-              </button>
-            )}
+            {/* Removed standalone Dark mode toggle as it is now in user dropdown */}
 
             {/* Mobile hamburger */}
             <button
@@ -510,8 +519,12 @@ export default function Navbar() {
             {user && (
               <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-800 px-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                    {user.displayName?.charAt(0) || "؟"}
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                    {user.profilePicture ? (
+                      <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      user.displayName?.charAt(0) || "؟"
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{user.displayName}</p>
@@ -521,6 +534,26 @@ export default function Navbar() {
                     {ROLE_META[user.role].label}
                   </span>
                 </div>
+
+                {/* Profile link - mobile */}
+                <Link
+                  href="/profile"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                  </svg>
+                  الملف الشخصي
+                </Link>
+
+                {/* Theme toggle - mobile */}
+                <div className="flex gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+                  <button onClick={() => setTheme('light')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${theme === 'light' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-gray-800'}`}>مضيء</button>
+                  <button onClick={() => setTheme('dark')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${theme === 'dark' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-gray-800'}`}>داكن</button>
+                  <button onClick={() => setTheme('system')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${theme === 'system' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:bg-white/50 dark:hover:bg-gray-800'}`}>النظام</button>
+                </div>
+
                 <button
                   onClick={() => { setIsMenuOpen(false); signOut(); }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"

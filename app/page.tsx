@@ -291,7 +291,7 @@ export default function Dashboard() {
     );
 
     return (
-      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950" dir="rtl">
+      <div className="flex flex-col flex-1 bg-gray-50 dark:bg-gray-950" dir="rtl">
         <div className="flex-1 animate-fade-in">
           {managerView === "admin" ? (
             <AdminEmployeeDashboard headerExtra={switcher} />

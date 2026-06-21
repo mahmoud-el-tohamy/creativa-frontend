@@ -5,6 +5,7 @@ import NextTopLoader from 'nextjs-toploader';
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import ProfileSetupModal from "@/components/ProfileSetupModal";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SWRConfig } from "swr";
@@ -64,6 +65,7 @@ export default function RootLayout({
           <SWRConfig value={swrConfig}>
             <AuthProvider>
               <Navbar />
+              <ProfileSetupModal />
               {children}
             </AuthProvider>
           </SWRConfig>

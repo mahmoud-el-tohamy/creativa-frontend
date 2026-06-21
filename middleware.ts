@@ -32,6 +32,7 @@ export function middleware(request: NextRequest) {
       pathname === "/instructors" ||
       pathname.startsWith("/instructors/") ||
       pathname === "/financial-tracking" ||
+      pathname === "/profile" ||
       pathname === "/login";
 
     if (!isAllowed) {

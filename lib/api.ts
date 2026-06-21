@@ -26,6 +26,11 @@ export interface AppUser {
   isActive: boolean;
   createdAt?: string;
   lastLoginAt?: string | null;
+  age?: number;
+  address?: string;
+  nationalId?: string;
+  phone?: string;
+  profilePicture?: string;
 }
 
 export interface LoginResponse {
@@ -463,6 +468,21 @@ export const usersAPI = {
     api.patch<{ success: boolean; data: AppUser }>(`/users/${id}/active`, { isActive }), // Note: parameter isActive ignored by backend toggle, but kept for signature matching
   deleteUser: (id: string) =>
     api.delete<{ success: boolean; message: string }>(`/users/${id}/hard`),
+  getProfile: () => api.get<{ success: boolean; data: AppUser }>("/users/profile"),
+  updateProfile: (data: Partial<AppUser> & { password?: string }) => 
+    api.put<{ success: boolean; data: AppUser; message: string }>("/users/profile", data),
+  uploadProfilePicture: (file: File) => {
+    const fd = new FormData();
+    fd.append("profilePicture", file);
+    return api.post<{ success: boolean; data: { profilePicture: string }; message: string }>("/users/profile-picture", fd, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+  },
+  deleteProfilePicture: () =>
+    api.delete<{ success: boolean; message: string }>("/users/profile-picture"),
+  adminUpdateProfile: (id: string, data: Partial<AppUser> & { password?: string }) =>
+    api.put<{ success: boolean; data: AppUser; message: string }>(`/users/${id}/profile`, data),
+  getUser: (id: string) => api.get<{ success: boolean; data: AppUser }>(`/users/${id}`)
 };
 
 export const auditAPI = {

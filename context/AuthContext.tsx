@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -16,6 +17,7 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   signIn: async () => {},
   signOut: async () => {},
+  refreshUser: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -52,6 +54,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     router.replace("/login");
   }, [router]);
+
+  const refreshUser = React.useCallback(async () => {
+    try {
+      const res = await authAPI.me();
+      if (res.data.success && res.data.user) {
+        setUser(res.data.user);
+      }
+    } catch (error) {
+      console.error("Failed to refresh user", error);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -90,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, refreshUser }}>
       {toastMessage && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 bg-red-600 text-white transition-all text-center min-w-[200px]">
           {toastMessage}

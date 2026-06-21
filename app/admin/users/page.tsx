@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import axios from "axios";
 import useSWR from "swr";
+import Link from "next/link";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { usersAPI, AppUser } from "@/lib/api";
@@ -355,10 +356,16 @@ export default function UsersPage() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                              {u.displayName?.charAt(0) || "؟"}
+                              {u.profilePicture ? (
+                                <img src={u.profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                u.displayName?.charAt(0) || "؟"
+                              )}
                             </div>
                             <div>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">{u.displayName}</p>
+                              <Link href={`/admin/users/${u.id}`} className="font-semibold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
+                                {u.displayName}
+                              </Link>
                             </div>
                           </div>
                         </td>
