@@ -422,8 +422,8 @@ export default api;
 // API Wrappers
 
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post<LoginResponse>("/auth/login", { email, password }),
+  login: (identifier: string, password: string) =>
+    api.post<LoginResponse>("/auth/login", { identifier, password }),
   logout: () => api.post("/auth/logout"),
   refresh: () => api.post("/auth/refresh"),
   me: () => api.get<MeResponse>("/auth/me"),
@@ -471,12 +471,8 @@ export const usersAPI = {
   getProfile: () => api.get<{ success: boolean; data: AppUser }>("/users/profile"),
   updateProfile: (data: Partial<AppUser> & { password?: string }) => 
     api.put<{ success: boolean; data: AppUser; message: string }>("/users/profile", data),
-  uploadProfilePicture: (file: File) => {
-    const fd = new FormData();
-    fd.append("profilePicture", file);
-    return api.post<{ success: boolean; data: { profilePicture: string }; message: string }>("/users/profile-picture", fd, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
+  uploadProfilePicture: (imageBase64: string) => {
+    return api.post<{ success: boolean; data: { profilePicture: string }; message: string }>("/users/profile-picture", { imageBase64 });
   },
   deleteProfilePicture: () =>
     api.delete<{ success: boolean; message: string }>("/users/profile-picture"),

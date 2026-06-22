@@ -1,46 +1,119 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usersAPI } from "@/lib/api";
 import RouteGuard from "@/components/RouteGuard";
 import ImageCropper from "@/components/ImageCropper";
 import getCroppedImg from "@/lib/cropImage";
 import type { Area } from "react-easy-crop";
+import imageCompression from 'browser-image-compression';
+
+// ─── Egyptian Validation Helpers ─────────────────────────────────────────────
+
+interface ValidationErrors {
+  displayName?: string;
+  phone?: string;
+  nationalId?: string;
+  age?: string;
+  address?: string;
+  password?: string;
+}
+
+function validateProfile(fields: {
+  displayName: string;
+  phone: string;
+  nationalId: string;
+  age: number | "";
+  address: string;
+  password: string;
+}): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  if (fields.displayName.trim() && fields.displayName.trim().length < 2) {
+    errors.displayName = "الاسم الكامل يجب أن يكون حرفين على الأقل";
+  }
+
+  // Egyptian phone: exactly 11 digits, starts with 010/011/012/015
+  if (fields.phone.trim()) {
+    if (!/^(010|011|012|015)\d{8}$/.test(fields.phone.trim())) {
+      errors.phone = "رقم هاتف مصري غير صحيح (يجب أن يبدأ بـ 010 أو 011 أو 012 أو 015 ويكون 11 رقم)";
+    }
+  }
+
+  // Egyptian National ID: exactly 14 digits
+  if (fields.nationalId.trim()) {
+    if (!/^\d{14}$/.test(fields.nationalId.trim())) {
+      errors.nationalId = "الرقم القومي يجب أن يكون 14 رقماً فقط";
+    }
+  }
+
+  // Age: integer between 15 and 100
+  if (fields.age !== "") {
+    const ageNum = Number(fields.age);
+    if (!Number.isInteger(ageNum) || ageNum < 15 || ageNum > 100) {
+      errors.age = "العمر يجب أن يكون رقماً صحيحاً بين 15 و100";
+    }
+  }
+
+  // Address: min 5 characters
+  if (fields.address.trim() && fields.address.trim().length < 5) {
+    errors.address = "العنوان يجب أن يكون 5 أحرف على الأقل";
+  }
+
+  // Password: optional but if given must be >= 8 chars, contain letter + number
+  if (fields.password.trim()) {
+    if (fields.password.length < 8) {
+      errors.password = "كلمة المرور يجب أن تكون 8 أحرف على الأقل";
+    } else if (!/[a-zA-Z]/.test(fields.password) || !/[0-9]/.test(fields.password)) {
+      errors.password = "يجب أن تحتوي كلمة المرور على حروف وأرقام";
+    }
+  }
+
+  return errors;
+}
+
+const inputBase =
+  "w-full px-4 py-3.5 rounded-xl border bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base";
+const inputNormal = `${inputBase} border-gray-200 dark:border-gray-700`;
+const inputError = `${inputBase} border-red-400 dark:border-red-500 focus:ring-red-400`;
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="mt-1 text-xs text-red-500 font-medium">{msg}</p> : null;
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
 
-  const [displayName, setDisplayName] = useState("");
-  const [age, setAge] = useState<number | "">("");
-  const [address, setAddress] = useState("");
-  const [nationalId, setNationalId] = useState("");
-  const [phone, setPhone] = useState("");
+  const [displayName, setDisplayName] = useState(user?.displayName || "");
+  const [age, setAge] = useState<number | "">(user?.age || "");
+  const [address, setAddress] = useState(user?.address || "");
+  const [nationalId, setNationalId] = useState(user?.nationalId || "");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(user?.profilePicture || null);
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [errors, setErrors] = useState<ValidationErrors>({});
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (user) {
-      setTimeout(() => {
-        setDisplayName(user.displayName || "");
-        setAge(user.age || "");
-        setAddress(user.address || "");
-        setNationalId(user.nationalId || "");
-        setPhone(user.phone || "");
-        if (user.profilePicture) {
-          setProfilePicture(user.profilePicture);
-        }
-      }, 0);
-    }
-  }, [user]);
+  const [prevUser, setPrevUser] = useState(user);
+  if (user !== prevUser) {
+    setPrevUser(user);
+    setDisplayName(user?.displayName || "");
+    setAge(user?.age || "");
+    setAddress(user?.address || "");
+    setNationalId(user?.nationalId || "");
+    setPhone(user?.phone || "");
+    setProfilePicture(user?.profilePicture || null);
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -60,14 +133,13 @@ export default function ProfilePage() {
       const croppedImageFile = await getCroppedImg(imageSrc, croppedAreaPixels);
       if (croppedImageFile) {
         setLoading(true);
-        // Compress image before upload
-        const compressedFile = await compressImage(croppedImageFile);
-        const res = await usersAPI.uploadProfilePicture(compressedFile);
+        const base64String = await compressAndConvertToBase64(croppedImageFile);
+        const res = await usersAPI.uploadProfilePicture(base64String);
         if (res.data.success) {
           if (res.data.data?.profilePicture) {
             setProfilePicture(res.data.data.profilePicture);
           }
-          window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم تحديث الصورة بنجاح!" }));
+          showSuccess("تم تحديث الصورة بنجاح!");
           refreshUser();
         }
       }
@@ -86,7 +158,7 @@ export default function ProfilePage() {
       const res = await usersAPI.deleteProfilePicture();
       if (res.data.success) {
         setProfilePicture(null);
-        window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم حذف الصورة بنجاح" }));
+        showSuccess("تم حذف الصورة بنجاح");
         refreshUser();
       }
     } catch {
@@ -96,63 +168,73 @@ export default function ProfilePage() {
     }
   };
 
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(null), 4000);
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSuccessMsg(null);
+
+    const validationErrors = validateProfile({ displayName, phone, nationalId, age, address, password });
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
+
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {};
       if (displayName.trim()) payload.displayName = displayName.trim();
       if (age !== "") payload.age = Number(age);
-      if (address.trim() !== "") payload.address = address.trim();
-      if (nationalId.trim() !== "") payload.nationalId = nationalId.trim();
-      if (phone.trim() !== "") payload.phone = phone.trim();
+      if (address.trim()) payload.address = address.trim();
+      if (nationalId.trim()) payload.nationalId = nationalId.trim();
+      if (phone.trim()) payload.phone = phone.trim();
       if (password.trim()) payload.password = password.trim();
 
       const res = await usersAPI.updateProfile(payload);
       if (res.data.success) {
-        window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم حفظ التعديلات بنجاح!" }));
+        showSuccess("تم حفظ التعديلات بنجاح!");
         setPassword("");
         refreshUser();
       }
     } catch (err: unknown) {
-      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || "حدث خطأ أثناء حفظ البيانات";
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        "حدث خطأ أثناء حفظ البيانات";
       window.dispatchEvent(new CustomEvent("global-toast", { detail: errorMsg }));
     } finally {
       setLoading(false);
     }
   };
 
-  const initials = user?.displayName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "؟";
+  const initials =
+    user?.displayName
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "؟";
 
-  // Compress image to max 800x800, quality 0.8 (JPEG)
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement("canvas");
-      const img = new window.Image();
-      img.onload = () => {
-        const MAX = 800;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
-          else { width = Math.round(width * MAX / height); height = MAX; }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob) resolve(new File([blob], file.name, { type: "image/jpeg" }));
-          else resolve(file);
-        }, "image/jpeg", 0.8);
-      };
-      img.src = URL.createObjectURL(file);
+  const compressAndConvertToBase64 = async (file: File): Promise<string> => {
+    const options = {
+      maxSizeMB: 0.1,
+      maxWidthOrHeight: 500,
+      useWebWorker: true,
+    };
+    const compressedFile = await imageCompression(file, options);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(compressedFile);
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
     });
   };
+
+  // Constants and FieldError components are defined at the module level outside the component.
 
   return (
     <RouteGuard>
       <main className="flex-1 bg-gray-50 dark:bg-gray-950 font-sans" dir="rtl">
-
         {imageSrc && (
           <ImageCropper
             imageSrc={imageSrc}
@@ -160,6 +242,13 @@ export default function ProfilePage() {
             onCancel={() => setImageSrc(null)}
             onSave={handleSaveCroppedImage}
           />
+        )}
+
+        {/* Success Toast */}
+        {successMsg && (
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl bg-green-600 text-white font-semibold shadow-lg animate-bounce-short">
+            {successMsg}
+          </div>
         )}
 
         {/* Hero Header */}
@@ -180,10 +269,11 @@ export default function ProfilePage() {
 
             {/* Avatar Section */}
             <div className="flex flex-row items-center gap-6 px-6 sm:px-10 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800">
-              {/* Avatar - fixed on right in RTL */}
+              {/* Avatar */}
               <div className="relative shrink-0">
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-4 border-white dark:border-gray-700 shadow-xl ring-4 ring-blue-500/20">
                   {profilePicture ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={profilePicture}
                       alt="Profile"
@@ -195,7 +285,6 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
-                {/* Camera button overlay */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute -bottom-2 -left-2 w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
@@ -209,7 +298,7 @@ export default function ProfilePage() {
                 <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
               </div>
 
-              {/* Name & info - takes remaining space */}
+              {/* Name & info */}
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white truncate">{user?.displayName}</h2>
                 <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 truncate mt-0.5">{user?.email}</p>
@@ -247,18 +336,19 @@ export default function ProfilePage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSaveProfile} className="px-6 sm:px-10 py-6 space-y-5">
+            <form onSubmit={handleSaveProfile} className="px-6 sm:px-10 py-6 space-y-5" noValidate>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Display Name */}
+                {/* Full Name */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-1">الاسم الكامل</label>
                   <input
                     type="text"
                     value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
+                    onChange={(e) => { setDisplayName(e.target.value); setErrors(v => ({ ...v, displayName: undefined })); }}
                     placeholder="أدخل اسمك الكامل"
-                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base"
+                    className={errors.displayName ? inputError : inputNormal}
                   />
+                  <FieldError msg={errors.displayName} />
                 </div>
 
                 {/* Email - readonly */}
@@ -287,11 +377,13 @@ export default function ProfilePage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => { setPhone(e.target.value); setErrors(v => ({ ...v, phone: undefined })); }}
                     placeholder="01xxxxxxxxx"
                     dir="ltr"
-                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base text-right"
+                    maxLength={11}
+                    className={`${errors.phone ? inputError : inputNormal} text-right`}
                   />
+                  <FieldError msg={errors.phone} />
                 </div>
 
                 {/* National ID */}
@@ -300,10 +392,13 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     value={nationalId}
-                    onChange={(e) => setNationalId(e.target.value)}
+                    onChange={(e) => { setNationalId(e.target.value.replace(/\D/g, "")); setErrors(v => ({ ...v, nationalId: undefined })); }}
                     placeholder="14 رقم"
-                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base"
+                    maxLength={14}
+                    inputMode="numeric"
+                    className={errors.nationalId ? inputError : inputNormal}
                   />
+                  <FieldError msg={errors.nationalId} />
                 </div>
               </div>
 
@@ -314,11 +409,13 @@ export default function ProfilePage() {
                   <input
                     type="number"
                     value={age}
-                    onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))}
-                    min={10} max={100}
+                    onChange={(e) => { setAge(e.target.value === "" ? "" : Number(e.target.value)); setErrors(v => ({ ...v, age: undefined })); }}
+                    min={15}
+                    max={100}
                     placeholder="مثال: 25"
-                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base"
+                    className={errors.age ? inputError : inputNormal}
                   />
+                  <FieldError msg={errors.age} />
                 </div>
 
                 {/* Password */}
@@ -328,14 +425,16 @@ export default function ProfilePage() {
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => { setPassword(e.target.value); setErrors(v => ({ ...v, password: undefined })); }}
                       placeholder="اتركها فارغة لعدم التغيير"
-                      className="w-full px-4 py-3.5 pl-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base"
+                      className={`${errors.password ? inputError : inputNormal} pl-10`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(p => !p)}
+                      onClick={() => setShowPassword((p) => !p)}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      tabIndex={-1}
+                      aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                     >
                       {showPassword ? (
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -349,6 +448,7 @@ export default function ProfilePage() {
                       )}
                     </button>
                   </div>
+                  <FieldError msg={errors.password} />
                 </div>
               </div>
 
@@ -358,10 +458,11 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="المدينة، الشارع"
-                  className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-base"
+                  onChange={(e) => { setAddress(e.target.value); setErrors(v => ({ ...v, address: undefined })); }}
+                  placeholder="المدينة، الشارع (5 أحرف على الأقل)"
+                  className={errors.address ? inputError : inputNormal}
                 />
+                <FieldError msg={errors.address} />
               </div>
 
               {/* Save button */}

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 interface AuthContextType {
   user: AppUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -38,9 +38,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => window.removeEventListener("global-toast", handleToast);
   }, []);
 
-  const signIn = React.useCallback(async (email: string, password: string) => {
-    const res = await authAPI.login(email, password);
+  // signIn accepts email OR displayName (username)
+  const signIn = React.useCallback(async (identifier: string, password: string) => {
+    const res = await authAPI.login(identifier, password);
     if (res.data.success && res.data.user) {
+      // Fetch fresh full profile after login so all fields are populated
+      try {
+        const meRes = await authAPI.me();
+        if (meRes.data.success && meRes.data.user) {
+          setUser(meRes.data.user);
+          return;
+        }
+      } catch {
+        // fallback to login response user
+      }
       setUser(res.data.user);
     }
   }, []);
@@ -51,6 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (e) {
       console.error("Sign out error", e);
     }
+    // Completely clear user state so no stale data persists after logout
     setUser(null);
     router.replace("/login");
   }, [router]);
