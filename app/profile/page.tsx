@@ -7,6 +7,7 @@ import RouteGuard from "@/components/RouteGuard";
 import ImageCropper from "@/components/ImageCropper";
 import getCroppedImg from "@/lib/cropImage";
 import type { Area } from "react-easy-crop";
+import imageCompression from 'browser-image-compression';
 
 // ─── Egyptian Validation Helpers ─────────────────────────────────────────────
 
@@ -132,8 +133,8 @@ export default function ProfilePage() {
       const croppedImageFile = await getCroppedImg(imageSrc, croppedAreaPixels);
       if (croppedImageFile) {
         setLoading(true);
-        const compressedFile = await compressImage(croppedImageFile);
-        const res = await usersAPI.uploadProfilePicture(compressedFile);
+        const base64String = await compressAndConvertToBase64(croppedImageFile);
+        const res = await usersAPI.uploadProfilePicture(base64String);
         if (res.data.success) {
           if (res.data.data?.profilePicture) {
             setProfilePicture(res.data.data.profilePicture);
@@ -214,36 +215,18 @@ export default function ProfilePage() {
       .slice(0, 2)
       .toUpperCase() || "؟";
 
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement("canvas");
-      const img = new window.Image();
-      img.onload = () => {
-        const MAX = 800;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          if (width > height) {
-            height = Math.round((height * MAX) / width);
-            width = MAX;
-          } else {
-            width = Math.round((width * MAX) / height);
-            height = MAX;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(new File([blob], file.name, { type: "image/jpeg" }));
-            else resolve(file);
-          },
-          "image/jpeg",
-          0.8
-        );
-      };
-      img.src = URL.createObjectURL(file);
+  const compressAndConvertToBase64 = async (file: File): Promise<string> => {
+    const options = {
+      maxSizeMB: 0.1,
+      maxWidthOrHeight: 500,
+      useWebWorker: true,
+    };
+    const compressedFile = await imageCompression(file, options);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(compressedFile);
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
     });
   };
 
