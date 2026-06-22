@@ -422,8 +422,8 @@ export default api;
 // API Wrappers
 
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post<LoginResponse>("/auth/login", { email, password }),
+  login: (identifier: string, password: string) =>
+    api.post<LoginResponse>("/auth/login", { identifier, password }),
   logout: () => api.post("/auth/logout"),
   refresh: () => api.post("/auth/refresh"),
   me: () => api.get<MeResponse>("/auth/me"),
