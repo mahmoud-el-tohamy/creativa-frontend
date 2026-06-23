@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import RouteGuard from "@/components/RouteGuard";
 import * as XLSX from "xlsx";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -2357,7 +2358,13 @@ function SessionsTab({
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                      {s.instructorName || "—"}
+                      {s.instructorId && s.instructorName ? (
+                        <Link href={`/instructors/${s.instructorId}`} className="hover:text-blue-600 hover:underline transition-colors dark:hover:text-blue-400">
+                          {s.instructorName}
+                        </Link>
+                      ) : (
+                        s.instructorName || "—"
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-center text-gray-600 dark:text-gray-400">
                       {s.attendeesCount}
