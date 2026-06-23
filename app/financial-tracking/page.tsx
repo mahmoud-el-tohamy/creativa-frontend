@@ -382,7 +382,15 @@ export default function FinancialTrackingPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{item.program}</td>
                       <td className="px-4 py-3 text-center">{item.attendance}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{item.instructorName}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                        {item.instructorId && item.instructorName && item.instructorName !== "بدون مدرب" ? (
+                          <Link href={`/instructors/${item.instructorId}`} className="hover:text-blue-600 hover:underline transition-colors dark:hover:text-blue-400">
+                            {item.instructorName}
+                          </Link>
+                        ) : (
+                          item.instructorName || "—"
+                        )}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{item.dailyRate.toLocaleString()} ج.م</td>
                       <td className="px-4 py-3 font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                         {item.totalCost.toLocaleString()} ج.م
