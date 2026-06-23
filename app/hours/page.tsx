@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import RouteGuard from "@/components/RouteGuard";
 import * as XLSX from "xlsx";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -541,6 +542,22 @@ function SessionModal({
   const [newInstructorName, setNewInstructorName] = useState("");
   const [savingInstructor, setSavingInstructor] = useState(false);
 
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  const handleTimeChange = (start: string, end: string) => {
+    setStartTime(start);
+    setEndTime(end);
+    if (start && end) {
+      const [startH, startM] = start.split(":").map(Number);
+      const [endH, endM] = end.split(":").map(Number);
+      let diff = endH * 60 + endM - (startH * 60 + startM);
+      if (diff < 0) diff += 24 * 60;
+      const hours = Number((diff / 60).toFixed(2));
+      setForm((f) => ({ ...f, hours }));
+    }
+  };
+
   useEffect(() => {
     if (open) {
       if (editing) {
@@ -565,6 +582,8 @@ function SessionModal({
       setErrors({});
       setAddingInstructor(false);
       setNewInstructorName("");
+      setStartTime("");
+      setEndTime("");
     }
   }, [open, editing]);
 
@@ -797,8 +816,8 @@ function SessionModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+            <div className="sm:col-span-4">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 التاريخ *
               </label>
@@ -815,23 +834,35 @@ function SessionModal({
                 <p className="text-xs text-red-500 mt-1">{errors.date}</p>
               )}
             </div>
-            <div>
+            <div className="sm:col-span-5">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                التوقيت (من - إلى)
+              </label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => handleTimeChange(e.target.value, endTime)}
+                  className="w-full px-2 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-gray-500 font-bold">-</span>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => handleTimeChange(startTime, e.target.value)}
+                  className="w-full px-2 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="sm:col-span-3">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 عدد الساعات *
               </label>
               <input
                 type="number"
                 value={form.hours}
-                min={0.5}
-                max={24}
-                step="any"
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    hours: parseFloat(e.target.value) || 0,
-                  }))
-                }
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed text-sm focus:outline-none"
               />
               {errors.hours && (
                 <p className="text-xs text-red-500 mt-1">{errors.hours}</p>
@@ -2357,7 +2388,13 @@ function SessionsTab({
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                      {s.instructorName || "—"}
+                      {s.instructorId && s.instructorName ? (
+                        <Link href={`/instructors/${s.instructorId}`} className="hover:text-blue-600 hover:underline transition-colors dark:hover:text-blue-400">
+                          {s.instructorName}
+                        </Link>
+                      ) : (
+                        s.instructorName || "—"
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-center text-gray-600 dark:text-gray-400">
                       {s.attendeesCount}

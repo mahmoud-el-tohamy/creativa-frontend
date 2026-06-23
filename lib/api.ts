@@ -679,6 +679,7 @@ export interface IFinancialSession {
   sessionName: string;
   program: string;
   attendance: number;
+  instructorId: string;
   instructorName: string;
   dailyRate: number;
   totalCost: number;
