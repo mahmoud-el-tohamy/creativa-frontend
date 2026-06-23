@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import axios from "axios";
 import useSWR from "swr";
 import Link from "next/link";
+import Image from "next/image";
 import RouteGuard from "@/components/RouteGuard";
 import { useAuth } from "@/hooks/useAuth";
 import { usersAPI, AppUser } from "@/lib/api";
@@ -357,7 +358,7 @@ export default function UsersPage() {
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                               {u.profilePicture ? (
-                                <img src={u.profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                                <Image src={u.profilePicture} alt="Profile" width={36} height={36} className="w-full h-full rounded-full object-cover" />
                               ) : (
                                 u.displayName?.charAt(0) || "؟"
                               )}

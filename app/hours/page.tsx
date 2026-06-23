@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import Link from "next/link";
 import RouteGuard from "@/components/RouteGuard";
-import * as XLSX from "xlsx";
+import type * as XLSX from "xlsx";
 import CustomSelect from "@/components/ui/CustomSelect";
 import ToggleSwitch from "@/components/ui/ToggleSwitch";
 import {
@@ -1246,6 +1246,8 @@ function ImportModal({
   }, [open]);
 
   const handleFile = async (f: File) => {
+    // PERF FIX 1 — Dynamic import for xlsx
+    const XLSX: typeof import("xlsx") = await import("xlsx");
     setFile(f);
     setResult(null);
     setConsultationsToReview(null);
@@ -1955,6 +1957,7 @@ interface SessionsTabProps {
   state: State;
   dispatch: React.Dispatch<Action>;
   onEdit: (s: TrainingSession) => void;
+  onAdd: () => void;
   onDelete: (s: TrainingSession) => void;
   showToast: (msg: string, type: "success" | "error") => void;
   onImport: () => void;
@@ -1965,6 +1968,7 @@ function SessionsTab({
   state,
   dispatch,
   onEdit,
+  onAdd,
   onDelete,
   showToast,
   onImport,
@@ -2057,7 +2061,7 @@ function SessionsTab({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={() => dispatch({ type: "OPEN_MODAL" })}
+          onClick={onAdd}
           className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors shadow-md"
         >
           <svg
@@ -4470,6 +4474,26 @@ function HoursPageContent() {
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
+  // PERF FIX 2 — Track instructor loading and load on demand
+  const instructorsLoadedRef = useRef(false);
+
+  const ensureInstructorsLoaded = async () => {
+    if (instructorsLoadedRef.current) return;
+    try {
+      // Pass lite: true to get a smaller response
+      const res = await hoursAPI.getInstructors({ lite: true });
+      dispatch({ type: "SET_INSTRUCTORS", instructors: res.data.data });
+      instructorsLoadedRef.current = true;
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleOpenModal = (session?: TrainingSession) => {
+    ensureInstructorsLoaded();
+    dispatch({ type: "OPEN_MODAL", session });
+  };
+
   // ── Load sessions ──────────────────────────────────────────────────────────
   const { sessionsFilters } = state;
   const loadSessions = useCallback(
@@ -4536,18 +4560,13 @@ function HoursPageContent() {
     }
   }, []);
 
-  // ── Load fiscal years + instructors ────────────────────────────────────────
+  // ── Load fiscal years ──────────────────────────────────────────────────────
+  // PERF FIX 2 — Removed hoursAPI.getInstructors() from mount effect
   useEffect(() => {
     hoursAPI
       .getFiscalYears()
       .then((res) => {
         dispatch({ type: "SET_FISCAL_YEARS", years: res.data.data });
-      })
-      .catch(() => {});
-    hoursAPI
-      .getInstructors()
-      .then((res) => {
-        dispatch({ type: "SET_INSTRUCTORS", instructors: res.data.data });
       })
       .catch(() => {});
   }, []);
@@ -4737,7 +4756,8 @@ function HoursPageContent() {
           <SessionsTab
             state={state}
             dispatch={dispatch}
-            onEdit={(s) => dispatch({ type: "OPEN_MODAL", session: s })}
+            onAdd={() => handleOpenModal()}
+            onEdit={(s) => handleOpenModal(s)}
             onDelete={setDeleteTarget}
             showToast={showToast}
             onImport={() => setImportOpen(true)}
