@@ -4481,6 +4481,8 @@ function HoursPageContent() {
           page: p,
           limit: 20,
           sort: flt.sort,
+          // PERF FIX 2 — Passed search parameter to the API call
+          search: flt.search || undefined,
           fiscalYear: flt.fiscalYear || undefined,
           programName: flt.programName || undefined,
           type: flt.type || undefined,
@@ -4556,6 +4558,7 @@ function HoursPageContent() {
   }, [state.activeTab, state.sessionsFilters, page, loadSessions]);
 
   // ── Timetable effect ───────────────────────────────────────────────────────
+  // PERF FIX 1 — Removed duplicate timetable useEffect
   useEffect(() => {
     if (state.activeTab === "timetable" && !state.timetableData) {
       loadTimetable(state.timetableYear);
@@ -4563,17 +4566,6 @@ function HoursPageContent() {
   }, [
     state.activeTab,
     state.timetableYear,
-    state.timetableData,
-    loadTimetable,
-  ]);
-
-  useEffect(() => {
-    if (state.activeTab === "timetable" && state.timetableData === null) {
-      loadTimetable(state.timetableYear);
-    }
-  }, [
-    state.timetableYear,
-    state.activeTab,
     state.timetableData,
     loadTimetable,
   ]);

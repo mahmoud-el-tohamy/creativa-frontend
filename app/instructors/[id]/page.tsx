@@ -129,12 +129,6 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
   const { user } = useRequireAuth(["admin", "employee", "accountant"]);
   const [state, dispatch] = useReducer(reducer, initialState);
   const [submitting, setSubmitting] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 0);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Modals state
   const [editData, setEditData] = useState<{ name: string; specializations: string[] }>({ name: "", specializations: [] });
@@ -164,31 +158,65 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
     }
   };
 
-  const fetchDashboard = async (period: PeriodType) => {
-    dispatch({ type: "DASHBOARD_FETCH", period });
-    try {
-      const res = await instructorsAPI.getDashboard(id, period);
-      // Backend returns { success: true, data: InstructorDashboardData }
-      if (res.data?.data) {
-        dispatch({ type: "DASHBOARD_SUCCESS", payload: res.data.data });
-      }
-    } catch {
-      dispatch({ type: "SET_ERROR" });
-    }
-  };
 
 
+
+  // PERF FIX 3 — Parallelize instructor profile + dashboard fetch
   useEffect(() => {
-    fetchProfile();
+    let cancelled = false;
+
+    async function loadInitial() {
+      dispatch({ type: "INIT_FETCH" });
+      dispatch({ type: "DASHBOARD_FETCH", period: state.selectedPeriod });
+      
+      try {
+        const [profileRes, dashboardRes] = await Promise.all([
+          instructorsAPI.get(id),
+          instructorsAPI.getDashboard(id, state.selectedPeriod),
+        ]);
+        if (cancelled) return;
+        
+        if (profileRes.data.success) {
+          dispatch({ type: "FETCH_SUCCESS", payload: profileRes.data.data });
+        } else {
+          router.push("/instructors");
+          return;
+        }
+        
+        if (dashboardRes.data?.data) {
+          dispatch({ type: "DASHBOARD_SUCCESS", payload: dashboardRes.data.data });
+        }
+      } catch {
+        if (!cancelled) {
+          router.push("/instructors");
+        }
+      }
+    }
+
+    loadInitial();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
-    if (state.instructor) {
-      fetchDashboard(state.selectedPeriod);
+    if (!state.instructor) return; // skip on initial mount
+
+    let cancelled = false;
+    async function refetchDashboard() {
+      dispatch({ type: "DASHBOARD_FETCH", period: state.selectedPeriod });
+      try {
+        const res = await instructorsAPI.getDashboard(id, state.selectedPeriod);
+        if (!cancelled && res.data?.data) {
+          dispatch({ type: "DASHBOARD_SUCCESS", payload: res.data.data });
+        }
+      } catch {
+        if (!cancelled) dispatch({ type: "SET_ERROR" });
+      }
     }
+    refetchDashboard();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.instructor, state.selectedPeriod]);
+  }, [state.selectedPeriod]);
 
   // Handlers
   const handleEditOpen = () => {
@@ -608,45 +636,43 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                   <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">توزيع الجلسات حسب البرنامج</h3>
                     <div className="h-64 relative">
-                      {isMounted && (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={dashboard.programBreakdown}
-                              dataKey="sessions"
-                              nameKey="program"
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={90}
-                              stroke="none"
-                            >
-                              {dashboard.programBreakdown.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program] || "#64748b"} />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                                borderRadius: '12px', 
-                                border: '1px solid rgba(75, 85, 99, 0.3)', 
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
-                                color: '#f3f4f6',
-                                direction: 'rtl'
-                              }}
-                              itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
-                              labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              formatter={(value: any, name: any, props: any) => {
-                                const amountText = canSeeRates && props.payload.totalAmount > 0 
-                                  ? ` | ${props.payload.totalAmount} ج` 
-                                  : '';
-                                return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      )}
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dashboard.programBreakdown}
+                            dataKey="sessions"
+                            nameKey="program"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={90}
+                            stroke="none"
+                          >
+                            {dashboard.programBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program] || "#64748b"} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(75, 85, 99, 0.3)', 
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                              color: '#f3f4f6',
+                              direction: 'rtl'
+                            }}
+                            itemStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#9ca3af', fontWeight: 'bold', marginBottom: '4px' }}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            formatter={(value: any, name: any, props: any) => {
+                              const amountText = canSeeRates && props.payload.totalAmount > 0 
+                                ? ` | ${props.payload.totalAmount} ج` 
+                                : '';
+                              return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
                       {/* Center Total */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-3xl font-black text-gray-800 dark:text-gray-200">{dashboard.totalSessions}</span>
@@ -732,10 +758,9 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                   <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">عدد الجلسات حسب نوع التدريب</h3>
                   <div className="h-64">
-                    {isMounted && (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                           <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
                           <Tooltip 
@@ -753,18 +778,16 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                             labelFormatter={(label) => label === "Consultation" ? "استشارة" : label === "Training" ? "تدريب" : label}
                           />
                           <Bar dataKey="sessions" name="عدد الجلسات" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                   <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">عدد الساعات حسب نوع التدريب</h3>
                   <div className="h-64">
-                    {isMounted && (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                           <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                           <Tooltip 
@@ -784,7 +807,6 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                           <Bar dataKey="hours" name="عدد الساعات" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={50} />
                         </BarChart>
                       </ResponsiveContainer>
-                    )}
                   </div>
                 </div>
               </div>

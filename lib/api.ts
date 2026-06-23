@@ -220,6 +220,7 @@ export interface SessionsParams {
   page?: number;
   limit?: number;
   sort?: "newest" | "oldest" | "name";
+  search?: string; // PERF FIX 2 — Added search
 }
 
 export interface Pagination {
