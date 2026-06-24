@@ -220,6 +220,7 @@ export interface SessionsParams {
   page?: number;
   limit?: number;
   sort?: "newest" | "oldest" | "name";
+  search?: string; // PERF FIX 2 — Added search
 }
 
 export interface Pagination {
@@ -518,8 +519,8 @@ export const hoursAPI = {
   deleteMultipleSessions: (ids: string[]) =>
     api.delete<{ success: boolean; deletedCount?: number }>("/hours/sessions/bulk", { data: { ids } }),
 
-  getInstructors: () =>
-    api.get<{ success: boolean; data: Instructor[] }>("/hours/instructors"),
+  getInstructors: (params?: { lite?: boolean; includeInactive?: boolean }) =>
+    api.get<{ success: boolean; data: Instructor[] }>("/hours/instructors", { params }),
 
   addInstructor: (name: string) =>
     api.post<{ success: boolean; data: Instructor }>("/hours/instructors", { name }),

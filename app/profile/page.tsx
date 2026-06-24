@@ -4,10 +4,14 @@ import React, { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usersAPI } from "@/lib/api";
 import RouteGuard from "@/components/RouteGuard";
-import ImageCropper from "@/components/ImageCropper";
+import dynamic from "next/dynamic";
 import getCroppedImg from "@/lib/cropImage";
 import type { Area } from "react-easy-crop";
-import imageCompression from 'browser-image-compression';
+
+// PERF FIX 3 — Dynamic import for conditionally rendered ImageCropper
+const ImageCropper = dynamic(() => import("@/components/ImageCropper"), {
+  ssr: false,
+});
 
 // ─── Egyptian Validation Helpers ─────────────────────────────────────────────
 
@@ -216,6 +220,8 @@ export default function ProfilePage() {
       .toUpperCase() || "؟";
 
   const compressAndConvertToBase64 = async (file: File): Promise<string> => {
+    // PERF FIX 3 — Dynamic import for browser-image-compression
+    const { default: imageCompression } = await import('browser-image-compression');
     const options = {
       maxSizeMB: 0.1,
       maxWidthOrHeight: 500,

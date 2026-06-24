@@ -411,7 +411,7 @@ export default function Navbar() {
                   >
                     <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
                       {user.profilePicture ? (
-                        <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                        <Image src={user.profilePicture} alt="Profile" width={36} height={36} className="w-full h-full object-cover" />
                       ) : (
                         user.displayName?.charAt(0) || "؟"
                       )}
@@ -521,7 +521,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
                     {user.profilePicture ? (
-                      <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                      <Image src={user.profilePicture} alt="Profile" width={40} height={40} className="w-full h-full object-cover" />
                     ) : (
                       user.displayName?.charAt(0) || "؟"
                     )}

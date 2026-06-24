@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { usersAPI, AppUser, UserRole } from "@/lib/api";
+import Image from "next/image";
 import RouteGuard from "@/components/RouteGuard";
 
 export default function AdminUserProfilePage() {
@@ -112,7 +113,7 @@ export default function AdminUserProfilePage() {
               <div className="flex flex-col items-center gap-4 w-full md:w-1/4">
                 <div className="w-40 h-40 rounded-full border-4 border-gray-100 dark:border-gray-700 overflow-hidden shadow-md">
                   {targetUser?.profilePicture ? (
-                     <img src={targetUser.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                     <Image src={targetUser.profilePicture} alt="Profile" width={160} height={160} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-blue-600 text-white flex items-center justify-center text-6xl font-bold">
                       {displayName.charAt(0) || "؟"}
