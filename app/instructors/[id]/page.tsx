@@ -636,7 +636,10 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                   <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">توزيع الجلسات حسب البرنامج</h3>
                     <div className="h-64 relative">
-                      <ResponsiveContainer width="100%" height="100%">
+                      {state.dashboardLoading ? (
+      <div style={{ height: "100%", width: "100%" }} className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded-lg absolute inset-0" />
+    ) : dashboard ? (
+      <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={dashboard.programBreakdown}
@@ -673,6 +676,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                           />
                         </PieChart>
                       </ResponsiveContainer>
+    ) : null}
                       {/* Center Total */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-3xl font-black text-gray-800 dark:text-gray-200">{dashboard.totalSessions}</span>
@@ -758,7 +762,10 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                   <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">عدد الجلسات حسب نوع التدريب</h3>
                   <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    {state.dashboardLoading ? (
+      <div style={{ height: "100%", width: "100%" }} className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded-lg absolute inset-0" />
+    ) : dashboard ? (
+      <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                           <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
@@ -780,12 +787,16 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                           <Bar dataKey="sessions" name="عدد الجلسات" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={50} />
                       </BarChart>
                     </ResponsiveContainer>
+    ) : null}
                   </div>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                   <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">عدد الساعات حسب نوع التدريب</h3>
                   <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    {state.dashboardLoading ? (
+      <div style={{ height: "100%", width: "100%" }} className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded-lg absolute inset-0" />
+    ) : dashboard ? (
+      <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dashboard.typeBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                           <XAxis dataKey="type" tickFormatter={(v) => v === "Consultation" ? "استشارة" : v === "Training" ? "تدريب" : v} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
@@ -807,6 +818,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                           <Bar dataKey="hours" name="عدد الساعات" fill="#14b8a6" radius={[4, 4, 0, 0]} maxBarSize={50} />
                         </BarChart>
                       </ResponsiveContainer>
+    ) : null}
                   </div>
                 </div>
               </div>
