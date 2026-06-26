@@ -598,6 +598,9 @@ export const plannedAPI = {
   get: (fy: string) =>
     api.get<{ success: boolean; data: PlannedTimetableResponse; exists: boolean }>(`/planned/${fy}`),
 
+  create: (fy: string) =>
+    api.post<{ success: boolean; data: PlannedTimetableResponse }>(`/planned/${encodeURIComponent(fy)}`),
+
   upsert: (fy: string, data: PlannedData) =>
     api.put<{ success: boolean; data: PlannedTimetableResponse }>(`/planned/${fy}`, { data }),
 
@@ -612,6 +615,18 @@ export const plannedAPI = {
 
   listYears: () =>
     api.get<{ success: boolean; data: string[] }>("/planned"),
+
+  copy: (targetFY: string, sourceFY: string, password?: string) =>
+    api.post<{ success: boolean; data: PlannedTimetableResponse }>(
+      `/planned/${encodeURIComponent(targetFY)}/copy-from/${encodeURIComponent(sourceFY)}`,
+      { password }
+    ),
+
+  resetMonth: (fy: string, monthIndex: number, password: string) =>
+    api.patch<{ success: boolean; data: PlannedTimetableResponse }>(
+      `/planned/${encodeURIComponent(fy)}/reset-month`,
+      { monthIndex, password }
+    ),
 };
 
 // ─── Instructors API ──────────────────────────────────────────────────────────

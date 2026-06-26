@@ -321,13 +321,13 @@ const TimetableTab = forwardRef<
                 يوم كامل
               </p>
             </div>
-            <div className="custom-scrollbar w-full overflow-auto h-[89vh]">
+            <div className="custom-scrollbar w-full overflow-auto">
               <table
                 className="w-full min-w-max text-[10px] sm:text-xs lg:text-sm border-collapse"
                 style={{ minWidth: "1100px" }}
                 dir="rtl"
               >
-                <thead className="sticky top-0 z-20 bg-slate-900 shadow-sm">
+                <thead className="z-20 bg-slate-900 shadow-sm">
                   <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
                     <th className="z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                       البرنامج
@@ -361,8 +361,32 @@ const TimetableTab = forwardRef<
                         {monthData.monthName} {monthData.year}
                       </td>
                     </tr>
+                    {/* Day numbers row */}
+                    <tr className="z-20 bg-indigo-50 dark:bg-indigo-950/60 text-[9px] font-bold border-b border-indigo-200 dark:border-indigo-800">
+                      <td className="bg-indigo-50 dark:bg-indigo-950/60 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold text-indigo-700 dark:text-indigo-300 text-[9px]">
+                        ايام الشهر
+                      </td>
+                      {Array.from({ length: 31 }, (_, i) => {
+                        const day = i + 1;
+                        const isInvalid = day > monthData.daysInMonth;
+                        return (
+                          <td
+                            key={day}
+                            className={`text-center border-r border-indigo-100 dark:border-indigo-800/30 w-8 py-1 font-bold ${
+                              isInvalid
+                                ? "bg-gray-50 dark:bg-gray-900/50 text-gray-300 dark:text-gray-700"
+                                : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400"
+                            }`}
+                          >
+                            {isInvalid ? "" : day}
+                          </td>
+                        );
+                      })}
+                      <td className="bg-indigo-50 dark:bg-indigo-950/60 border-r border-indigo-100 dark:border-indigo-800/30">&nbsp;</td>
+                      <td className="bg-indigo-50 dark:bg-indigo-950/60 border-r border-indigo-100 dark:border-indigo-800/30">&nbsp;</td>
+                    </tr>
                     {/* Weekday names row */}
-                    <tr className="sticky right-0 top-10 z-20 bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                    <tr className=" top-10 z-20 bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
                       <td className=" bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                         يوم الأسبوع
                       </td>
