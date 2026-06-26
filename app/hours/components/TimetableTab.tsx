@@ -2,38 +2,60 @@
 import type {} from "@/lib/types/planned";
 import { hoursAPI, IMonthData, IAnnualTotal } from "@/lib/api";
 
-
-import React, { useReducer, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useReducer,
+  useEffect,
+  useCallback,
+  useMemo,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import CustomSelect from "@/components/ui/CustomSelect";
+import {
+  BarChart,
+  Bar,
+  ResponsiveContainer,
+  Cell,
+  Tooltip,
+  XAxis,
+} from "recharts";
 
-
-import {  getCurrentFiscalYear, downloadBlob, TIMETABLE_PROGRAMS, TIMETABLE_PROGRAM_COLORS, INITIAL_STATE, reducer, } from "./sharedHoursTypes";
+import {
+  getCurrentFiscalYear,
+  downloadBlob,
+  TIMETABLE_PROGRAMS,
+  TIMETABLE_PROGRAM_COLORS,
+  INITIAL_STATE,
+  reducer,
+} from "./sharedHoursTypes";
 
 export interface TimetableTabProps {
   fiscalYears: string[];
   showToast: (msg: string, type: "success" | "error") => void;
 }
 
-const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) => void }, TimetableTabProps>(function TimetableTab({
-  fiscalYears,
-  showToast
-}, ref) {
+const TimetableTab = forwardRef<
+  { reload: () => void; setYear: (year: string) => void },
+  TimetableTabProps
+>(function TimetableTab({ fiscalYears, showToast }, ref) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
-  const {
-    timetableData: snap,
-    timetableYear: year,
-    timetableLoading,
-  } = state;
-  const loadTimetable = useCallback(async (fy: string) => {
-    dispatch({ type: "SET_TIMETABLE_LOADING", loading: true });
-    try {
-      const res = await hoursAPI.getTimetable(fy);
-      dispatch({ type: "SET_TIMETABLE", data: res.data.data, year: fy });
-    } catch (error: unknown) {
-      showToast((error as Error).message || "Failed to load timetable", "error");
-      dispatch({ type: "SET_TIMETABLE_LOADING", loading: false });
-    }
-  }, [showToast]);
+  const { timetableData: snap, timetableYear: year, timetableLoading } = state;
+  const loadTimetable = useCallback(
+    async (fy: string) => {
+      dispatch({ type: "SET_TIMETABLE_LOADING", loading: true });
+      try {
+        const res = await hoursAPI.getTimetable(fy);
+        dispatch({ type: "SET_TIMETABLE", data: res.data.data, year: fy });
+      } catch (error: unknown) {
+        showToast(
+          (error as Error).message || "Failed to load timetable",
+          "error",
+        );
+        dispatch({ type: "SET_TIMETABLE_LOADING", loading: false });
+      }
+    },
+    [showToast],
+  );
 
   useEffect(() => {
     if (!snap && !timetableLoading) {
@@ -43,9 +65,9 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
 
   useImperativeHandle(ref, () => ({
     reload: () => loadTimetable(year),
-    setYear: (fy: string) => dispatch({ type: "SET_TIMETABLE", data: null, year: fy }),
+    setYear: (fy: string) =>
+      dispatch({ type: "SET_TIMETABLE", data: null, year: fy }),
   }));
-
 
   const handleExport = async (type: "hours" | "timetable") => {
     try {
@@ -177,7 +199,7 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                 إجمالي أيام التدريب
@@ -189,26 +211,102 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                 {snap.sessionCount} جلسة
               </p>
             </div>
-            {snap.quarterly.slice(0, 3).map((q) => (
+            {snap.quarterly.map((q) => (
               <div
                 key={q.quarter}
-                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4"
+                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col justify-between"
               >
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                   {q.quarter === "Q1"
                     ? "الربع الأول"
                     : q.quarter === "Q2"
                       ? "الربع الثاني"
-                      : "الربع الثالث"}
+                      : q.quarter === "Q3"
+                        ? "الربع الثالث"
+                        : "الربع الرابع"}
                 </p>
                 <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">
                   {q.totalDays}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p
+                  className="text-[10px] sm:text-xs text-gray-400 mt-1 truncate"
+                  title={q.months.join(" • ")}
+                >
                   {q.months.join(" • ")}
                 </p>
               </div>
             ))}
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-2 h-full min-h-[100px] flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[...snap.quarterly].reverse()}>
+                  <XAxis
+                    dataKey="quarter"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: "bold" }}
+                    tickFormatter={(val) =>
+                      val === "Q1"
+                        ? "1st"
+                        : val === "Q2"
+                          ? "2nd"
+                          : val === "Q3"
+                            ? "3rd"
+                            : "4th"
+                    }
+                  />
+                  <Tooltip
+                    cursor={{ fill: "transparent" }}
+                    contentStyle={{
+                      backgroundColor: "rgba(17, 24, 39, 0.9)",
+                      border: "none",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "12px",
+                    }}
+                    itemStyle={{ color: "#fff" }}
+                    formatter={(value: unknown) => [
+                      `${(value as number) || 0} يوم`,
+                      "الإجمالي",
+                    ]}
+                    labelFormatter={(
+                      label: unknown,
+                      payload: readonly unknown[],
+                    ) => {
+                      if (payload && payload.length > 0) {
+                        const payloadArray = payload as Array<{
+                          payload: { quarter: string };
+                        }>;
+                        const q = payloadArray[0].payload.quarter;
+                        return q === "Q1"
+                          ? "الربع الأول"
+                          : q === "Q2"
+                            ? "الربع الثاني"
+                            : q === "Q3"
+                              ? "الربع الثالث"
+                              : "الربع الرابع";
+                      }
+                      return label as React.ReactNode;
+                    }}
+                  />
+                  <Bar dataKey="totalDays" fill="#0d9488" radius={[4, 4, 0, 0]}>
+                    {[...snap.quarterly]
+                      .reverse()
+                      .map(
+                        (
+                          entry: { quarter: string; totalDays: number },
+                          index: number,
+                        ) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={index % 2 === 0 ? "#0d9488" : "#14b8a6"}
+                          />
+                        ),
+                      )}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-visible">
@@ -223,29 +321,29 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                 يوم كامل
               </p>
             </div>
-            <div className="custom-scrollbar">
+            <div className="custom-scrollbar w-full overflow-auto h-[89vh]">
               <table
-                className="w-full text-[10px] sm:text-xs lg:text-sm border-collapse"
+                className="w-full min-w-max text-[10px] sm:text-xs lg:text-sm border-collapse"
                 style={{ minWidth: "1100px" }}
                 dir="rtl"
               >
-                <thead>
+                <thead className="sticky top-0 z-20 bg-slate-900 shadow-sm">
                   <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
-                    <th className="sticky right-0 top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
+                    <th className="z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                       البرنامج
                     </th>
                     {Array.from({ length: 31 }, (_, i) => (
                       <th
                         key={i}
-                        className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
+                        className="bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                       >
                         {i + 1}
                       </th>
                     ))}
-                    <th className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
+                    <th className=" bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
                       استشارات
                     </th>
-                    <th className="sticky top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
+                    <th className="bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                       المجموع
                     </th>
                   </tr>
@@ -258,14 +356,14 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                     <tr className="bg-blue-50 dark:bg-blue-950">
                       <td
                         colSpan={34}
-                        className="sticky right-0 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
+                        className="bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
                       >
                         {monthData.monthName} {monthData.year}
                       </td>
                     </tr>
                     {/* Weekday names row */}
-                    <tr className="bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                      <td className="sticky right-0 top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                    <tr className="sticky right-0 top-10 z-20 bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                      <td className=" bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                         يوم الأسبوع
                       </td>
                       {Array.from({ length: 31 }, (_, i) => {
@@ -275,8 +373,10 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                           return (
                             <td
                               key={day}
-                              className="sticky top-[96px] md:top-[104px] z-30 bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
-                            >&nbsp;</td>
+                              className="bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
+                            >
+                              &nbsp;
+                            </td>
                           );
                         }
                         const d = new Date(
@@ -298,7 +398,7 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                         return (
                           <td
                             key={day}
-                            className={`sticky top-[96px] md:top-[104px] z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                            className={` z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
                               isWeekend
                                 ? "bg-slate-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold"
                                 : "bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400"
@@ -308,19 +408,27 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                           </td>
                         );
                       })}
-                      <td className="sticky top-[96px] md:top-[104px] z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
-                      <td className="sticky top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                      <td className=" z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">
+                        &nbsp;
+                      </td>
+                      <td className=" z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">
+                        &nbsp;
+                      </td>
                     </tr>
                     {TIMETABLE_PROGRAMS.map((prog) => {
                       const progData = monthData.programs[prog] as
-                        | (Record<number, number> & { monthTotal: number; consultationTotal?: number })
+                        | (Record<number, number> & {
+                            monthTotal: number;
+                            consultationTotal?: number;
+                          })
                         | undefined;
                       const color = TIMETABLE_PROGRAM_COLORS[prog];
                       const consVal = progData?.consultationTotal ?? 0;
                       const consDays = monthData.consultations?.[prog] ?? [];
-                      const tooltip = consDays.length > 0
-                        ? `تواريخ الاستشارات: ${consDays.join(", ")}`
-                        : undefined;
+                      const tooltip =
+                        consDays.length > 0
+                          ? `تواريخ الاستشارات: ${consDays.join(", ")}`
+                          : undefined;
 
                       return (
                         <tr
@@ -337,8 +445,14 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                             const day = i + 1;
                             const val = progData ? (progData[day] ?? 0) : 0;
                             const isInvalid = day > monthData.daysInMonth;
-                            const d = new Date(monthData.year, monthData.monthIndex, day);
-                            const isWeekend = !isInvalid && (d.getDay() === 5 || d.getDay() === 6);
+                            const d = new Date(
+                              monthData.year,
+                              monthData.monthIndex,
+                              day,
+                            );
+                            const isWeekend =
+                              !isInvalid &&
+                              (d.getDay() === 5 || d.getDay() === 6);
 
                             let cellClass = "";
                             if (isInvalid) {
@@ -360,17 +474,13 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                               <td
                                 key={day}
                                 className={`text-center border-r border-gray-100 dark:border-gray-700/30 h-7 w-8 ${cellClass} relative`}
-                                title={
-                                  val > 0
-                                    ? `${val} يوم`
-                                    : undefined
-                                }
+                                title={val > 0 ? `${val} يوم` : undefined}
                               >
-                                {!isInvalid && val > 0 ? (
-                                  val === 0.5 ? "½" : val
-                                ) : (
-                                  ""
-                                )}
+                                {!isInvalid && val > 0
+                                  ? val === 0.5
+                                    ? "½"
+                                    : val
+                                  : ""}
                               </td>
                             );
                           })}
@@ -382,7 +492,11 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                             }`}
                             title={tooltip}
                           >
-                            {consVal > 0 ? (consVal === 0.5 ? "½" : consVal) : ""}
+                            {consVal > 0
+                              ? consVal === 0.5
+                                ? "½"
+                                : consVal
+                              : ""}
                           </td>
                           <td className="px-2 py-1 text-center font-bold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/40">
                             {progData?.monthTotal ?? 0}
@@ -415,10 +529,15 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
                         );
                       })}
                       {(() => {
-                        const consTotal = TIMETABLE_PROGRAMS.reduce((sum, prog) => {
-                          const pd = monthData.programs[prog] as { consultationTotal?: number } | undefined;
-                          return sum + (pd?.consultationTotal ?? 0);
-                        }, 0);
+                        const consTotal = TIMETABLE_PROGRAMS.reduce(
+                          (sum, prog) => {
+                            const pd = monthData.programs[prog] as
+                              | { consultationTotal?: number }
+                              | undefined;
+                            return sum + (pd?.consultationTotal ?? 0);
+                          },
+                          0,
+                        );
                         return (
                           <td className="text-center h-6 text-[10px] text-gray-800 dark:text-gray-200 font-bold">
                             {consTotal > 0 ? consTotal : ""}
@@ -527,6 +646,5 @@ const TimetableTab = forwardRef<{ reload: () => void; setYear: (year: string) =>
 });
 
 // ─── Archive Tab ──────────────────────────────────────────────────────────────
-
 
 export default TimetableTab;

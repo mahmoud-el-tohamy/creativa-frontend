@@ -397,29 +397,29 @@ function PlannedTab({
             انقر على الخلايا لتبديل الحالة: كليك يمين للتقليل،كليك شمال للزيادة،
           </p>
         </div>
-        <div className="custom-scrollbar">
+        <div className="custom-scrollbar w-full overflow-auto h-[89vh]">
           <table
-            className="w-full text-[10px] sm:text-xs border-collapse"
+            className="w-full min-w-max text-[10px] sm:text-xs border-collapse"
             style={{ minWidth: "1100px" }}
             dir="rtl"
           >
-            <thead>
+            <thead className="sticky top-0 z-20 bg-slate-900 shadow-sm">
               <tr className="bg-gray-50 dark:bg-slate-900 shadow-sm h-10">
-                <th className="sticky right-0 top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
+                <th className="z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-right font-semibold text-gray-600 dark:text-gray-400 border-b border-l border-gray-200 dark:border-gray-600 min-w-[160px] h-10">
                   البرنامج
                 </th>
                 {Array.from({ length: 31 }, (_, i) => (
                   <th
                     key={i}
-                    className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
+                    className="bg-gray-50 dark:bg-slate-900 px-0 py-2 text-center font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 w-8 h-10"
                   >
                     {i + 1}
                   </th>
                 ))}
-                <th className="sticky top-14 md:top-16 z-30 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
+                <th className="bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 h-10">
                   استشارات
                 </th>
-                <th className="sticky top-14 md:top-16 z-35 bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
+                <th className="bg-gray-50 dark:bg-slate-900 px-2 py-2 text-center font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 h-10">
                   المجموع
                 </th>
               </tr>
@@ -433,14 +433,14 @@ function PlannedTab({
                   <tr className="bg-blue-50 dark:bg-blue-950">
                     <td
                       colSpan={34}
-                      className="sticky right-0 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
+                      className="bg-blue-50 dark:bg-blue-950 px-3 py-1.5 font-bold text-blue-800 dark:text-blue-300 text-xs border-t-2 border-blue-200 dark:border-blue-800"
                     >
                       {ARABIC_MONTH_NAMES[calMonth]} {calYear}
                     </td>
                   </tr>
                   {/* Weekday names row */}
-                  <tr className="bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
-                    <td className="sticky right-0 top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
+                  <tr className="sticky right-0 top-10 z-20 bg-gray-100 dark:bg-slate-900 text-[9px] font-bold text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                    <td className="bg-gray-100 dark:bg-slate-900 px-2 py-1 text-right border-l border-gray-200 dark:border-gray-700 font-semibold">
                       يوم الأسبوع
                     </td>
                     {Array.from({ length: 31 }, (_, i) => {
@@ -450,7 +450,7 @@ function PlannedTab({
                         return (
                           <td
                             key={day}
-                            className="sticky top-[96px] md:top-[104px] z-30 bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
+                            className="bg-gray-50 dark:bg-slate-900 text-center border-r border-gray-100 dark:border-gray-700/30"
                           >&nbsp;</td>
                         );
                       }
@@ -469,7 +469,7 @@ function PlannedTab({
                       return (
                         <td
                           key={day}
-                          className={`sticky top-[96px] md:top-[104px] z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
+                          className={`z-30 text-center border-r border-gray-100 dark:border-gray-700/30 w-8 py-1 ${
                             isWeekend
                               ? "bg-slate-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold"
                               : "bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400"
@@ -479,8 +479,8 @@ function PlannedTab({
                         </td>
                       );
                     })}
-                    <td className="sticky top-[96px] md:top-[104px] z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
-                    <td className="sticky top-[96px] md:top-[104px] z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                    <td className="z-30 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
+                    <td className="z-35 bg-gray-100 dark:bg-slate-900 border-r border-gray-100 dark:border-gray-700/30">&nbsp;</td>
                   </tr>
                   {/* Program rows */}
                   {ALL_PLANNED_PROGRAMS.map((prog) => {

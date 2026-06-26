@@ -654,9 +654,9 @@ function AdminEmployeeDashboard({ headerExtra }: { headerExtra?: React.ReactNode
       {/* ━━━ ADDED: Charts Row 1: Program Performance ━━━ */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">أيام التدريب حسب البرنامج</h2>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">إجمالي أيام التدريب موزعة على البرامج</p>
-          <div className="w-full" style={{ height: Math.max(250, (trainingStats?.programDays?.length || 0) * 50 + 50) }} dir="ltr">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">الجلسات حسب البرنامج</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">إجمالي عدد الجلسات موزعة على البرامج</p>
+          <div className="w-full h-[350px]" dir="ltr">
             <ChartContainer loading={trainingStatsLoading}>
               {({ height }) => {
                 const programDaysData = (trainingStats?.programDays || []).map(item => ({
@@ -665,16 +665,16 @@ function AdminEmployeeDashboard({ headerExtra }: { headerExtra?: React.ReactNode
                 }));
                 return (
                   <ResponsiveContainer width="100%" height={height}>
-                    <BarChart data={programDaysData} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
-                      <YAxis dataKey="program" type="category" width={160} axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 700 }} />
+                    <BarChart data={programDaysData} margin={{ top: 20, right: 10, left: -20, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                      <XAxis dataKey="program" type="category" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 700 }} angle={-35} textAnchor="end" height={60} />
+                      <YAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 13, fontWeight: 600 }} />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                      <Bar dataKey="totalDays" name="أيام التدريب" radius={[0, 4, 4, 0]} maxBarSize={45}>
+                      <Bar dataKey="sessionCount" name="عدد الجلسات" radius={[4, 4, 0, 0]} maxBarSize={45}>
                         {programDaysData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[entry.program as string] || "#94a3b8"} />
                         ))}
-                        <LabelList dataKey="totalDays" position="right" fill="#9ca3af" fontSize={14} fontWeight={700} />
+                        <LabelList dataKey="sessionCount" position="top" fill="#9ca3af" fontSize={14} fontWeight={700} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
