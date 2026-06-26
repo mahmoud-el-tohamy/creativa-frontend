@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   getBlacklist,
   addToBlacklist,
@@ -229,13 +229,31 @@ export default function BlacklistPage() {
     return result;
   }, [entries, filters, activeTab]);
 
-  // Paginate entries
+  const observerRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Client-Side Infinite Scroll
   const paginatedEntries = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredEntries.slice(startIndex, startIndex + itemsPerPage);
+    return filteredEntries.slice(0, currentPage * itemsPerPage);
   }, [filteredEntries, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+  const hasMore = currentPage * itemsPerPage < filteredEntries.length;
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setCurrentPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: "100px" }
+    );
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [hasMore]);
+
+
 
   const validSelectedIds = selectedIds.filter((id) =>
     entries.some((entry) => entry.id === id),
@@ -557,6 +575,11 @@ export default function BlacklistPage() {
                         )}
                       </tr>
                     ))}
+                    {hasMore && (
+                      <tr ref={observerRef} className="h-10 opacity-0 pointer-events-none">
+                        <td colSpan={7}></td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -596,148 +619,6 @@ export default function BlacklistPage() {
               </div>
             )}
           </div>
-
-          {/* Pagination Controls */}
-          {filteredEntries.length > itemsPerPage && (
-            <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-xl md:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 border-t border-gray-100 dark:border-gray-700/50">
-              <div className="text-sm font-semibold text-gray-500 dark:text-gray-400 text-center md:text-right w-full md:w-auto">
-                عرض{" "}
-                <span className="text-gray-900 dark:text-gray-100 font-black">
-                  {Math.min(
-                    filteredEntries.length,
-                    (currentPage - 1) * itemsPerPage + 1,
-                  )}
-                  -
-                  {Math.min(filteredEntries.length, currentPage * itemsPerPage)}
-                </span>{" "}
-                من أصل{" "}
-                <span className="text-gray-900 dark:text-gray-100 font-black">
-                  {filteredEntries.length}
-                </span>{" "}
-                سجل
-              </div>
-
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center w-full md:w-auto">
-                {/* First Page Button */}
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="p-1.5 sm:p-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title="الصفحة الأولى"
-                >
-                  <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-
-                {/* Previous Page Button */}
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="p-1.5 sm:p-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title="الصفحة السابقة"
-                >
-                  <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-
-                {/* Page Numbers */}
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xs sm:text-sm font-black transition-all ${currentPage === pageNum ? "bg-teal-600 text-white shadow-lg shadow-teal-600/20" : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"}`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Next Page Button */}
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="p-1.5 sm:p-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title="الصفحة التالية"
-                >
-                  <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-
-                {/* Last Page Button */}
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="p-1.5 sm:p-2 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
-                  title="الصفحة الأخيرة"
-                >
-                  <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M11 19l-7-7 7-7M19 19l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Add Modal */}

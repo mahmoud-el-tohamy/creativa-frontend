@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { financeAPI, IFinancialSession, IFinancialPagination } from "@/lib/api";
@@ -45,10 +45,33 @@ export default function FinancialTrackingPage() {
   // Applied filter state — used for actual fetch; only updates when user clicks Search
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const observerRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Intersection Observer for Infinite Scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingNextPage && !isLoading) {
+          setCurrentPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: "100px" }
+    );
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingNextPage, isLoading]);
 
   // Core fetch — takes explicit applied filters + page to avoid stale closure bugs
   const fetchData = useCallback(async (f: FilterState, page: number) => {
-    setIsLoading(true);
+    if (page === 1) {
+      setIsLoading(true);
+    } else {
+      setIsFetchingNextPage(true);
+    }
     try {
       const params: Record<string, string | number> = { page, limit: PAGE_SIZE };
       if (f.period && f.period !== "all") params.period = f.period;
@@ -62,14 +85,16 @@ export default function FinancialTrackingPage() {
 
       const res = await financeAPI.getInstructorFinancials(params as Parameters<typeof financeAPI.getInstructorFinancials>[0]);
       if (res.data.success) {
-        setData(res.data.data);
+        setData(prev => page === 1 ? res.data.data : [...prev, ...res.data.data]);
         setTotalCostSum(res.data.totalCostSum ?? 0);
         setPagination(res.data.pagination ?? { page, limit: PAGE_SIZE, total: 0, totalPages: 1 });
+        setHasMore(page < (res.data.pagination?.totalPages ?? 1));
       }
     } catch (error) {
       console.error("Error fetching financial data:", error);
     } finally {
       setIsLoading(false);
+      setIsFetchingNextPage(false);
     }
   }, []);
 
@@ -420,91 +445,28 @@ export default function FinancialTrackingPage() {
                     </tr>
                   ))
                 )}
+                {isFetchingNextPage && (
+                  <tr>
+                    <td colSpan={10} className="py-6 text-center">
+                      <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                    </td>
+                  </tr>
+                )}
+                {hasMore && !isLoading && (
+                  <tr ref={observerRef} className="h-10 opacity-0 pointer-events-none">
+                    <td colSpan={10}></td>
+                  </tr>
+                )}
+                {!hasMore && data.length > 0 && (
+                  <tr>
+                    <td colSpan={10} className="py-4 text-center text-sm text-gray-500 font-semibold bg-gray-50/50 dark:bg-gray-800/50">
+                      لا يوجد المزيد من الجلسات
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
-          {!isLoading && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                عرض{" "}
-                <span className="font-semibold text-gray-700 dark:text-gray-200">
-                  {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)}
-                </span>{" "}
-                من{" "}
-                <span className="font-semibold text-gray-700 dark:text-gray-200">{pagination.total}</span> سجل
-              </p>
-              <div className="flex items-center gap-1">
-                {/* First page */}
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(1)}
-                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  title="الصفحة الأولى"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
-                </button>
-                {/* Prev page */}
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  title="السابق"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-
-                {/* Page numbers */}
-                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                  const half = 2;
-                  let start = Math.max(1, currentPage - half);
-                  const end = Math.min(pagination.totalPages, start + 4);
-                  start = Math.max(1, end - 4);
-                  return start + i;
-                }).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setCurrentPage(p)}
-                    className={`min-w-[36px] h-9 rounded-lg text-sm font-semibold transition ${
-                      p === currentPage
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-
-                {/* Next page */}
-                <button
-                  disabled={currentPage === pagination.totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  title="التالي"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                {/* Last page */}
-                <button
-                  disabled={currentPage === pagination.totalPages}
-                  onClick={() => setCurrentPage(pagination.totalPages)}
-                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  title="الصفحة الأخيرة"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

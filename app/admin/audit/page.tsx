@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
 import RouteGuard from "@/components/RouteGuard";
 import { getAuditLogs, AuditLog } from "@/lib/audit";
@@ -135,8 +135,24 @@ export default function AuditPage() {
     });
   }, [logs, filterAction, filterPerformer, filterFrom, filterTo]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const observerRef = useRef<HTMLTableRowElement | null>(null);
+  const paginated = filtered.slice(0, page * PAGE_SIZE);
+  const hasMore = page * PAGE_SIZE < filtered.length;
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: "100px" }
+    );
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   const resetFilters = () => {
     setFilterAction(""); setFilterPerformer(""); setFilterFrom(""); setFilterTo(""); setPage(1);
@@ -293,28 +309,14 @@ export default function AuditPage() {
                       );
                     })
                   )}
+                  {hasMore && (
+                    <tr ref={observerRef} className="h-10 opacity-0 pointer-events-none">
+                      <td colSpan={5}></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            {!loading && totalPages > 1 && (
-              <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  صفحة {page} من {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed">
-                    السابق
-                  </button>
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed">
-                    التالي
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
         </div>

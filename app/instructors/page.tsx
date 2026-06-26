@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import RouteGuard from "@/components/RouteGuard";
@@ -58,15 +58,18 @@ function InstructorsContent() {
   
   const [instructors, setInstructors] = useState<IInstructor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
+  const limit = 15;
+  const observerRef = useRef<HTMLDivElement>(null);
+  const tableObserverRef = useRef<HTMLTableRowElement>(null);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 15;
 
-  
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -97,43 +100,77 @@ function InstructorsContent() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1); // Reset page on search
     }, 250);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Fetch data
-  const fetchInstructors = async () => {
-    await Promise.resolve(); // Prevent synchronous setState in useEffect
-    setLoading(true);
+  // Reset page when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setPage(1);
+      setHasMore(true);
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [debouncedSearch, selectedSpecializations]);
+
+  const fetchInstructors = React.useCallback(async (currentPage: number) => {
+    // Defer to avoid synchronous setState inside effect warning
+    await Promise.resolve();
     try {
+      if (currentPage === 1) setLoading(true);
+      else setIsFetchingNextPage(true);
+
       const res = await instructorsAPI.list({
         search: debouncedSearch || undefined,
         specialization: selectedSpecializations.length > 0 ? selectedSpecializations.join(",") : undefined,
         includeInactive: false,
-        page,
+        page: currentPage,
         limit,
       });
       if (res.data.success) {
-        setInstructors(res.data.data);
+        if (currentPage === 1) {
+          setInstructors(res.data.data);
+        } else {
+          setInstructors((prev) => [...prev, ...res.data.data]);
+        }
         if (res.data.pagination) {
-          setTotalPages(res.data.pagination.totalPages);
+          setHasMore(currentPage < res.data.pagination.totalPages);
+        } else {
+          setHasMore(false);
         }
       }
     } catch (error) {
       console.error("Failed to fetch instructors", error);
     } finally {
       setLoading(false);
+      setIsFetchingNextPage(false);
     }
-  };
+  }, [debouncedSearch, selectedSpecializations]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchInstructors();
+    const timeoutId = setTimeout(() => {
+      fetchInstructors(page);
     }, 0);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, selectedSpecializations, page]);
+    return () => clearTimeout(timeoutId);
+  }, [page, fetchInstructors]);
+
+  // Intersection Observer for Infinite Scroll
+  useEffect(() => {
+    const currentRef = viewMode === "grid" ? observerRef.current : tableObserverRef.current;
+    if (!currentRef || loading || isFetchingNextPage || !hasMore) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !isFetchingNextPage && !loading) {
+        setPage((prev) => prev + 1);
+      }
+    }, { threshold: 1.0 });
+
+    observer.observe(currentRef);
+
+    return () => {
+      if (currentRef) observer.unobserve(currentRef);
+    };
+  }, [hasMore, isFetchingNextPage, loading, viewMode]);
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +205,9 @@ function InstructorsContent() {
         dailyConsultationRate: "",
       });
       window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم إضافة المدرب بنجاح" }));
-      fetchInstructors();
+      // Fetch fresh list
+      setPage(1);
+      fetchInstructors(1);
     } catch (error) {
       console.error("Failed to add instructor", error);
     } finally {
@@ -270,7 +309,7 @@ function InstructorsContent() {
         </div>
 
         {/* INSTRUCTORS GRID */}
-        {loading ? (
+        {loading && page === 1 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse h-48"></div>
@@ -295,74 +334,91 @@ function InstructorsContent() {
             )}
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {instructors.map((instructor) => {
-              const avatarColor = generateAvatarColor(instructor.name);
-              const initials = getInitials(instructor.name);
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {instructors.map((instructor) => {
+                const avatarColor = generateAvatarColor(instructor.name);
+                const initials = getInitials(instructor.name);
 
-              return (
-                <div key={instructor.id || instructor._id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col transition-all hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 relative overflow-hidden">
-                  
-                  {!instructor.isActive && (
-                    <div className="absolute top-4 left-4">
-                      <span className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold px-2 py-1 rounded-md">
-                        غير نشط
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl shrink-0 ${avatarColor}`}>
-                      {initials}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1" title={instructor.name}>
-                        {instructor.name}
-                      </h3>
-                      {/* Specializations Pills */}
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {(instructor.specializations || []).slice(0, 3).map((spec, i) => (
-                          <span key={i} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                            {spec}
-                          </span>
-                        ))}
-                        {(instructor.specializations || []).length > 3 && (
-                          <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            +{(instructor.specializations || []).length - 3}
-                          </span>
-                        )}
-                        {(instructor.specializations || []).length === 0 && (
-                          <span className="text-xs text-gray-400">لا يوجد تخصص</span>
-                        )}
+                return (
+                  <div key={instructor.id || instructor._id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col transition-all hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 relative overflow-hidden">
+                    
+                    {!instructor.isActive && (
+                      <div className="absolute top-4 left-4">
+                        <span className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold px-2 py-1 rounded-md">
+                          غير نشط
+                        </span>
                       </div>
+                    )}
+
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl shrink-0 ${avatarColor}`}>
+                        {initials}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1" title={instructor.name}>
+                          {instructor.name}
+                        </h3>
+                        {/* Specializations Pills */}
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {(instructor.specializations || []).slice(0, 3).map((spec, i) => (
+                            <span key={i} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                              {spec}
+                            </span>
+                          ))}
+                          {(instructor.specializations || []).length > 3 && (
+                            <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                              +{(instructor.specializations || []).length - 3}
+                            </span>
+                          )}
+                          {(instructor.specializations || []).length === 0 && (
+                            <span className="text-xs text-gray-400">لا يوجد تخصص</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {canSeeRates && (
+                      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mb-4 mt-auto">
+                        <div className="flex justify-between items-center text-sm mb-1">
+                          <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">سعر الساعة التدريبية:</span>
+                          <span className="font-bold text-gray-800 dark:text-gray-200">{instructor.hourlyTrainingRate > 0 ? `${instructor.hourlyTrainingRate} ج` : "—"}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">سعر الساعة الاستشارية:</span>
+                          <span className="font-bold text-gray-800 dark:text-gray-200">{instructor.hourlyConsultationRate > 0 ? `${instructor.hourlyConsultationRate} ج` : "—"}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {!canSeeRates && <div className="mt-auto pt-4" />}
+
+                    <Link
+                      href={`/instructors/${instructor.id || instructor._id}`}
+                      className="mt-auto w-full text-center bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2.5 rounded-xl font-bold transition-colors text-sm"
+                    >
+                      عرض الملف
+                    </Link>
+                  </div>
+                );
+              })}
+
+              {/* Infinite Scroll Skeleton for Grid View */}
+              {isFetchingNextPage && (
+                [...Array(3)].map((_, i) => (
+                  <div key={`skeleton-${i}`} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse h-48 flex flex-col">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+                      <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
                     </div>
                   </div>
-
-                  {canSeeRates && (
-                    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mb-4 mt-auto">
-                      <div className="flex justify-between items-center text-sm mb-1">
-                        <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">سعر الساعة التدريبية:</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{instructor.hourlyTrainingRate > 0 ? `${instructor.hourlyTrainingRate} ج` : "—"}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">سعر الساعة الاستشارية:</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{instructor.hourlyConsultationRate > 0 ? `${instructor.hourlyConsultationRate} ج` : "—"}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {!canSeeRates && <div className="mt-auto pt-4" />}
-
-                  <Link
-                    href={`/instructors/${instructor.id || instructor._id}`}
-                    className="mt-auto w-full text-center bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2.5 rounded-xl font-bold transition-colors text-sm"
-                  >
-                    عرض الملف
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
+                ))
+              )}
+            </div>
+            
+            {/* Sentinel Element for Grid View */}
+            <div ref={observerRef} className="h-1 mt-4" />
+          </>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
@@ -434,52 +490,40 @@ function InstructorsContent() {
                       )}
                     </tr>
                   ))}
+                  
+                  {/* Infinite Scroll Skeleton for Table View */}
+                  {isFetchingNextPage && (
+                    [...Array(4)].map((_, i) => (
+                      <tr key={`skeleton-${i}`} className="border-b border-gray-100 dark:border-gray-800 animate-pulse">
+                        <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                        <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                        <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                        <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                        <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                        {canSeeRates && (
+                          <>
+                            <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                            <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                            <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                            <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full" /></td>
+                          </>
+                        )}
+                      </tr>
+                    ))
+                  )}
+
+                  {/* Sentinel Element for Table View */}
+                  <tr ref={tableObserverRef} className="h-1" />
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* PAGINATION CONTROLS */}
-        {!loading && totalPages > 1 && (
-          <div className="mt-8 flex justify-center items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="السابق"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-
-            <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${
-                    page === p
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
-                      : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="التالي"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+        {/* End of list graceful message */}
+        {!hasMore && instructors.length > 0 && !loading && !isFetchingNextPage && (
+          <div className="px-5 py-6 mt-4 text-center text-gray-500 dark:text-gray-400 font-semibold border-t border-gray-100 dark:border-gray-800">
+            لا توجد المزيد من الحسابات لعرضها
           </div>
         )}
       </div>
