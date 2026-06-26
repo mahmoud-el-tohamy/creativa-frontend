@@ -32,7 +32,7 @@ const ComparisonChart = React.memo(function ComparisonChart({ data, isActive }: 
 
   return (
     <div className="h-[400px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minHeight={350} minWidth={100}>
         <ComposedChart
           data={chartData}
           margin={{ top: 10, right: 20, left: 0, bottom: 5 }}

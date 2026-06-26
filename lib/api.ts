@@ -101,7 +101,13 @@ export interface CheckResponse {
 
 export interface UsersListResponse {
   success: boolean;
-  data: AppUser[];
+  data: {
+    users: AppUser[];
+    totalCount: number;
+    activeCount: number;
+    inactiveCount: number;
+    hasMore: boolean;
+  };
 }
 
 export interface CreateUserData {
@@ -449,10 +455,10 @@ export const blacklistAPI = {
 };
 
 export const usersAPI = {
-  list: async () => {
-    const res = await api.get<UsersListResponse>("/users");
-    if (res.data && res.data.data) {
-      res.data.data = res.data.data.map(u => ({ ...u, id: u.id || (u as unknown as { _id: string })._id }));
+  list: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const res = await api.get<UsersListResponse>("/users", { params });
+    if (res.data && res.data.data && res.data.data.users) {
+      res.data.data.users = res.data.data.users.map(u => ({ ...u, id: u.id || (u as unknown as { _id: string })._id }));
     }
     return res;
   },

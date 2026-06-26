@@ -1462,6 +1462,8 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
 
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [page, setPage] = useState(1);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const observerRef = useRef<HTMLTableRowElement | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TrainingSession | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -1497,7 +1499,11 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
   const { sessionsFilters } = state;
   const loadSessions = useCallback(
     async (p = page) => {
-      dispatch({ type: "SET_SESSIONS_LOADING", loading: true });
+      if (p === 1) {
+        dispatch({ type: "SET_SESSIONS_LOADING", loading: true });
+      } else {
+        setIsFetchingNextPage(true);
+      }
       try {
         const flt = sessionsFilters;
         const res = await hoursAPI.getSessions({
@@ -1511,22 +1517,35 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
           dateFrom: flt.dateFrom || undefined,
           dateTo: flt.dateTo || undefined,
         });
-        dispatch({
-          type: "SET_SESSIONS",
-          sessions: res.data.data,
-          pagination: res.data.pagination,
-        });
+        if (p === 1) {
+          dispatch({
+            type: "SET_SESSIONS",
+            sessions: res.data.data,
+            pagination: res.data.pagination,
+          });
+        } else {
+          dispatch({
+            type: "APPEND_SESSIONS",
+            sessions: res.data.data,
+            pagination: res.data.pagination,
+          });
+        }
       } catch (err) {
         if (!axios.isAxiosError(err) || err.response?.status !== 401) {
           dispatch({ type: "SET_SESSIONS_LOADING", loading: false });
         }
+      } finally {
+        setIsFetchingNextPage(false);
       }
     },
     [sessionsFilters, page],
   );
 
   useEffect(() => {
-    loadSessions(page);
+    const timeoutId = setTimeout(() => {
+      loadSessions(page);
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [state.sessionsFilters, page, loadSessions]);
 
   const handleDelete = async () => {
@@ -1627,6 +1646,23 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
     sessionsPagination: pag,
     sessionsFilters: flt,
   } = state;
+
+  const hasMore = pag.page < pag.totalPages;
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingNextPage && !sessionsLoading) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: "100px" }
+    );
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingNextPage, sessionsLoading]);
 
   return (
     <div className="space-y-4">
@@ -2080,76 +2116,28 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
                   </tr>
                 ))
               )}
+              {isFetchingNextPage && (
+                <tr>
+                  <td colSpan={12} className="py-6 text-center">
+                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                  </td>
+                </tr>
+              )}
+              {hasMore && !sessionsLoading && (
+                <tr ref={observerRef} className="h-10 opacity-0 pointer-events-none">
+                  <td colSpan={12}></td>
+                </tr>
+              )}
+              {!hasMore && sessions.length > 0 && (
+                <tr>
+                  <td colSpan={12} className="py-4 text-center text-sm text-gray-500 font-semibold bg-gray-50/50 dark:bg-gray-800/50">
+                    لا يوجد المزيد من الجلسات
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        {pag.totalPages > 1 && (
-          <div
-            className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50"
-            dir="rtl"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {pag.total} نتيجة — صفحة {pag.page} من {pag.totalPages}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage(pag.page - 1)}
-                disabled={pag.page <= 1}
-                className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-              {Array.from({ length: Math.min(pag.totalPages, 7) }, (_, i) => {
-                let pageNum: number;
-                if (pag.totalPages <= 7) pageNum = i + 1;
-                else if (pag.page <= 4) pageNum = i + 1;
-                else if (pag.page >= pag.totalPages - 3)
-                  pageNum = pag.totalPages - 6 + i;
-                else pageNum = pag.page - 3 + i;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`w-7 h-7 text-xs font-bold rounded-lg transition-colors ${pageNum === pag.page ? "bg-blue-600 text-white" : "border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPage(pag.page + 1)}
-                disabled={pag.page >= pag.totalPages}
-                className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <DeleteConfirm

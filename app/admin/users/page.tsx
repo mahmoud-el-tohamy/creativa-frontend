@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import axios from "axios";
-import useSWR from "swr";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import RouteGuard from "@/components/RouteGuard";
@@ -21,15 +19,39 @@ function formatDate(d: string | Date | undefined) {
   return new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "short", day: "numeric" }).format(dateObj);
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-function SkeletonRow() {
+function InfiniteSkeletonRow() {
   return (
-    <tr className="border-b border-gray-100 dark:border-gray-800">
-      {[...Array(6)].map((_, i) => (
-        <td key={i} className="px-5 py-4">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-full" />
-        </td>
-      ))}
+    <tr className="border-b border-gray-100 dark:border-gray-800 animate-pulse">
+      {/* Name (with Profile Pic) */}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32" />
+        </div>
+      </td>
+      {/* Email */}
+      <td className="px-5 py-4">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-40" />
+      </td>
+      {/* Role */}
+      <td className="px-5 py-4">
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-20" />
+      </td>
+      {/* Status */}
+      <td className="px-5 py-4">
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-16" />
+      </td>
+      {/* Date */}
+      <td className="px-5 py-4">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
+      </td>
+      {/* Actions */}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-10" />
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-6" />
+        </div>
+      </td>
     </tr>
   );
 }
@@ -70,11 +92,8 @@ function AddUserModal({ onClose, onCreated }: AddUserModalProps) {
         setSubmitting(false);
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "تعذّر الاتصال بالخادم");
-      } else {
-        setError("حدث خطأ غير متوقع");
-      }
+      const errorObj = err as { response?: { data?: { message?: string } } };
+      setError(errorObj.response?.data?.message || "تعذّر الاتصال بالخادم");
       setSubmitting(false);
     }
   };
@@ -166,43 +185,97 @@ function ConfirmDialog({ message, onConfirm, onCancel, danger }: ConfirmDialogPr
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
-  const fetcher = async () => {
-    const res = await usersAPI.list();
-    return res.data.data;
-  };
-
-  const { data: usersData, mutate, isLoading: loading } = useSWR("/api/users", fetcher, {
-    revalidateOnFocus: true,
-    onError: () => {
-      showToast("فشل تحميل المستخدمين", "error");
-    }
-  });
-
-  const users = useMemo(() => usersData || [], [usersData]);
-
+  
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
+
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void; danger?: boolean } | null>(null);
+  
+  const observerRef = useRef<HTMLTableRowElement>(null);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
+  const showToast = useCallback((msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
-  };
+  }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return users.filter((u) =>
-      u.displayName?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q)
-    );
-  }, [users, search]);
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  const stats = useMemo(() => ({
-    total: users.length,
-    active: users.filter((u) => u.isActive).length,
-    inactive: users.filter((u) => !u.isActive).length,
-  }), [users]);
+  // When debounced search changes, reset page and trigger a reload.
+  // We don't clear users here to avoid layout jump while loading the new search results.
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setPage(1);
+      setHasMore(true);
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [debouncedSearch]);
+
+  const fetchUsers = useCallback(async (currentPage: number, currentSearch: string) => {
+    try {
+      if (currentPage === 1) setLoading(true);
+      else setIsFetchingNextPage(true);
+
+      const res = await usersAPI.list({ page: currentPage, limit: 10, search: currentSearch });
+      const data = res.data.data;
+
+      setStats({
+        total: data.totalCount,
+        active: data.activeCount,
+        inactive: data.inactiveCount,
+      });
+      setHasMore(data.hasMore);
+
+      if (currentPage === 1) {
+        setUsers(data.users);
+      } else {
+        setUsers((prev) => [...prev, ...data.users]);
+      }
+    } catch {
+      showToast("فشل تحميل المستخدمين", "error");
+    } finally {
+      setLoading(false);
+      setIsFetchingNextPage(false);
+    }
+  }, [showToast]);
+
+  // Fetch when page or debouncedSearch changes
+  useEffect(() => {
+    // eslint-disable-next-line
+    fetchUsers(page, debouncedSearch);
+  }, [page, debouncedSearch, fetchUsers]);
+
+  // Intersection Observer for Infinite Scroll
+  useEffect(() => {
+    const currentRef = observerRef.current;
+    if (!currentRef || loading || isFetchingNextPage || !hasMore) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !isFetchingNextPage && !loading) {
+        setPage((prev) => prev + 1);
+      }
+    }, { threshold: 1.0 });
+
+    observer.observe(currentRef);
+
+    return () => {
+      if (currentRef) observer.unobserve(currentRef);
+    };
+  }, [hasMore, isFetchingNextPage, loading]);
 
   const handleRoleChange = (id: string, newRole: UserRole, name: string) => {
     setConfirmDialog({
@@ -211,7 +284,7 @@ export default function UsersPage() {
         setConfirmDialog(null);
         try {
           await usersAPI.changeRole(id, newRole);
-          mutate((prev: AppUser[] | undefined) => (prev || []).map((u) => u.id === id ? { ...u, role: newRole } : u), false);
+          setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role: newRole } : u));
           showToast(`تم تحديث دور ${name}`);
         } catch {
           showToast("حدث خطأ أثناء تحديث الدور", "error");
@@ -230,7 +303,7 @@ export default function UsersPage() {
         setConfirmDialog(null);
         try {
           await usersAPI.toggleActive(id, !currentActive);
-          mutate((prev: AppUser[] | undefined) => (prev || []).map((u) => u.id === id ? { ...u, isActive: !currentActive } : u), false);
+          setUsers((prev) => prev.map((u) => u.id === id ? { ...u, isActive: !currentActive } : u));
           showToast(`تم ${action} حساب ${name} بنجاح`);
         } catch {
           showToast(`حدث خطأ أثناء ${action} الحساب`, "error");
@@ -248,7 +321,8 @@ export default function UsersPage() {
         setConfirmDialog(null);
         try {
           await usersAPI.deleteUser(id);
-          mutate((prev: AppUser[] | undefined) => (prev || []).filter((u) => u.id !== id), false);
+          setUsers((prev) => prev.filter((u) => u.id !== id));
+          setStats((prev) => ({ ...prev, total: prev.total - 1 })); // simple local stat adjustment
           showToast(`تم حذف حساب ${name} بنجاح`);
         } catch {
           showToast(`حدث خطأ أثناء حذف الحساب`, "error");
@@ -258,7 +332,8 @@ export default function UsersPage() {
   };
 
   const handleUserCreated = (newUser: AppUser) => {
-    mutate((prev: AppUser[] | undefined) => [newUser, ...(prev || [])], false);
+    setUsers((prev) => [newUser, ...prev]);
+    setStats((prev) => ({ ...prev, total: prev.total + 1, active: prev.active + 1 }));
     setShowAddModal(false);
     showToast(`تم إنشاء حساب ${newUser.displayName} بنجاح`);
   };
@@ -313,7 +388,7 @@ export default function UsersPage() {
             ].map(({ label, value, color, bg }) => (
               <div key={label} className={`${bg} rounded-2xl p-5 text-center`}>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-                <p className={`text-3xl font-extrabold ${color}`}>{loading ? "—" : value}</p>
+                <p className={`text-3xl font-extrabold ${color}`}>{loading && page === 1 ? "—" : value}</p>
               </div>
             ))}
           </div>
@@ -327,7 +402,7 @@ export default function UsersPage() {
               id="users-search"
               name="usersSearch"
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث بالاسم أو البريد الإلكتروني..."
+              placeholder="ابحث بالاسم أو البريد الإلكتروني أو الرقم القومي..."
               className="w-full pr-12 pl-5 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
@@ -344,14 +419,14 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? (
-                    [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
-                  ) : filtered.length === 0 ? (
+                  {loading && page === 1 ? (
+                    [...Array(5)].map((_, i) => <InfiniteSkeletonRow key={i} />)
+                  ) : users.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-5 py-12 text-center text-gray-400 dark:text-gray-500">لا يوجد مستخدمون مطابقون</td>
                     </tr>
                   ) : (
-                    filtered.map((u) => (
+                    users.map((u) => (
                       <tr key={u.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         {/* Name */}
                         <td className="px-5 py-4">
@@ -421,8 +496,23 @@ export default function UsersPage() {
                       </tr>
                     ))
                   )}
+
+                  {/* Infinite Scroll Skeleton (The UI Mirror) */}
+                  {isFetchingNextPage && (
+                    [...Array(4)].map((_, i) => <InfiniteSkeletonRow key={`skeleton-${i}`} />)
+                  )}
+
+                  {/* Sentinel Element for Intersection Observer */}
+                  <tr ref={observerRef} className="h-1" />
                 </tbody>
               </table>
+
+              {/* End of list graceful message */}
+              {!hasMore && users.length > 0 && !loading && !isFetchingNextPage && (
+                <div className="px-5 py-6 text-center text-gray-500 dark:text-gray-400 font-semibold border-t border-gray-100 dark:border-gray-800">
+                  لا توجد المزيد من الحسابات لعرضها
+                </div>
+              )}
             </div>
           </div>
         </div>

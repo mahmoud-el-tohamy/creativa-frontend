@@ -263,6 +263,11 @@ export type Action =
       sessions: TrainingSession[];
       pagination: Pagination;
     }
+  | {
+      type: "APPEND_SESSIONS";
+      sessions: TrainingSession[];
+      pagination: Pagination;
+    }
   | { type: "SET_SESSIONS_LOADING"; loading: boolean }
   | { type: "SET_FILTER"; key: keyof SessionFilters; value: string }
   | { type: "RESET_FILTERS" }
@@ -340,6 +345,13 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         sessions: action.sessions,
+        sessionsPagination: action.pagination,
+        sessionsLoading: false,
+      };
+    case "APPEND_SESSIONS":
+      return {
+        ...state,
+        sessions: [...state.sessions, ...action.sessions],
         sessionsPagination: action.pagination,
         sessionsLoading: false,
       };
