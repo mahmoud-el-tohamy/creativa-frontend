@@ -40,8 +40,8 @@ function SessionModal({
   const [newInstructorName, setNewInstructorName] = useState("");
   const [savingInstructor, setSavingInstructor] = useState(false);
 
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [startTime, setStartTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("16:00");
 
   const handleTimeChange = (start: string, end: string) => {
     setStartTime(start);
@@ -74,14 +74,16 @@ function SessionModal({
           evaluationReportUrl: editing.evaluationReportUrl ?? "",
           trainingReportUrl: editing.trainingReportUrl ?? "",
         });
+        setStartTime("");
+        setEndTime("");
       } else {
         setForm(EMPTY_FORM);
+        setStartTime("10:00");
+        setEndTime("16:00");
       }
       setErrors({});
       setAddingInstructor(false);
       setNewInstructorName("");
-      setStartTime("");
-      setEndTime("");
     }
   }, [open, editing]);
 
@@ -322,7 +324,12 @@ function SessionModal({
               <input
                 type="date"
                 value={form.date}
-                max={new Date().toISOString().split("T")[0]}
+                max={(() => {
+                  const now = new Date();
+                  // Allow up to the last day of next month
+                  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+                  return nextMonth.toISOString().split("T")[0];
+                })()}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, date: e.target.value }))
                 }

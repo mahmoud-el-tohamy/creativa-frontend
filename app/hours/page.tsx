@@ -50,13 +50,17 @@ export default function HoursPageContent() {
 
 
 
-  useEffect(() => {
+  const reloadFiscalYears = () => {
     hoursAPI
       .getFiscalYears()
       .then((res) => {
         setFiscalYears(res.data.data);
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    reloadFiscalYears();
   }, []);
 
   const handleTabChange = (tab: TabKey) => {
@@ -133,7 +137,10 @@ export default function HoursPageContent() {
           <div style={{ display: activeTab === "tracking" ? "block" : "none" }}>
             <SessionsTab 
               showToast={showToast} 
-              onSessionsChanged={() => timetableRef.current?.reload?.()} 
+              onSessionsChanged={() => {
+                timetableRef.current?.reload?.();
+                reloadFiscalYears();
+              }} 
             />
           </div>
         )}
@@ -164,6 +171,7 @@ export default function HoursPageContent() {
               fiscalYears={fiscalYears} 
               showToast={showToast} 
               onDirtyChange={setIsDirty} 
+              onFiscalYearsChanged={reloadFiscalYears}
             />
           </div>
         )}

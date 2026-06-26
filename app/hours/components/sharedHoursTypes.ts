@@ -492,7 +492,7 @@ export const EMPTY_FORM: TrainingSessionPayload = {
   programName: "Career Development",
   sessionName: "",
   date: "",
-  hours: 1,
+  hours: 6,
   mode: "online",
   isPaid: true,
   instructorId: "",
