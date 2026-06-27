@@ -2,11 +2,19 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { UserRole } from "@/lib/api";
+import { UserRole, hoursAPI } from "@/lib/api";
+
+function getCurrentFiscalYear() {
+  const d = new Date();
+  const m = d.getMonth();
+  const y = d.getFullYear();
+  if (m >= 4) return `FY${y}-${y + 1}`;
+  return `FY${y - 1}-${y}`;
+}
 
 type NavLink = {
   href: string;
@@ -33,11 +41,8 @@ const BASE_LINKS_ALL: NavLink[] = [
   { href: "/blacklist",   label: "البلاك ليست" },
 ];
 
-// Viewer only sees these two
-const VIEWER_LINKS: NavLink[] = [
-  { href: "/",        label: "الرئيسية" },
-  { href: "/blacklist", label: "البلاك ليست" },
-];
+// Viewer sees no links
+const VIEWER_LINKS: NavLink[] = [];
 
 const ADMIN_LINKS: NavLink[] = [
   { href: "/admin/users", label: "المستخدمون" },
@@ -65,6 +70,36 @@ export default function Navbar() {
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const desktopNavRef = useRef<HTMLDivElement>(null);
   const { user, loading, signOut } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [fiscalYears, setFiscalYears] = useState<string[]>([]);
+  
+  const currentFY = searchParams.get('fiscalYear') || getCurrentFiscalYear();
+  const currentQ = searchParams.get('quarter') || "all";
+
+  useEffect(() => {
+    if (user?.role === "viewer" && pathname === "/viewer-dashboard") {
+      hoursAPI.getFiscalYears().then((res) => {
+        if (res.data.success && res.data.data.length > 0) {
+          const current = getCurrentFiscalYear();
+          const list = res.data.data.includes(current) ? res.data.data : [current, ...res.data.data];
+          setFiscalYears(list);
+        } else {
+          setFiscalYears([getCurrentFiscalYear()]);
+        }
+      }).catch(() => {
+        setFiscalYears([getCurrentFiscalYear()]);
+      });
+    }
+  }, [user?.role, pathname]);
+
+  const updateFilters = (newFY: string, newQ: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('fiscalYear', newFY);
+    params.set('quarter', newQ);
+    router.push(`?${params.toString()}`);
+  };
 
   // Must call all hooks before any early return (React rules of hooks)
   useEffect(() => {
@@ -148,28 +183,7 @@ export default function Navbar() {
         },
       ]
     : isViewer
-    ? [
-        { 
-          type: "link" as const, 
-          href: "/", 
-          label: (
-            <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-              الرئيسية
-            </span>
-          ) as unknown as string
-        },
-        { 
-          type: "link" as const, 
-          href: "/blacklist", 
-          label: (
-            <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              البلاك ليست
-            </span>
-          ) as unknown as string 
-        },
-      ]
+    ? []
     : [
         { 
           type: "link" as const, 
@@ -324,6 +338,43 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2 md:gap-4 h-full">
+
+            {/* Viewer Filters */}
+            {isViewer && pathname === "/viewer-dashboard" && (
+              <div className="hidden md:flex items-center gap-2 ml-4">
+                <div className="relative">
+                  <select
+                    value={currentFY}
+                    onChange={(e) => updateFilters(e.target.value, currentQ)}
+                    className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-8 pr-3 rounded-lg font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer min-w-[120px] text-xs"
+                  >
+                    <option value="all">كل السنوات</option>
+                    {fiscalYears.map(fy => (
+                      <option key={fy} value={fy}>{fy}</option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                </div>
+                <div className="relative">
+                  <select
+                    value={currentQ}
+                    onChange={(e) => updateFilters(currentFY, e.target.value)}
+                    className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-1.5 pl-8 pr-3 rounded-lg font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer min-w-[100px] text-xs"
+                  >
+                    <option value="all">كل الأرباع</option>
+                    <option value="Q1">الربع الأول</option>
+                    <option value="Q2">الربع الثاني</option>
+                    <option value="Q3">الربع الثالث</option>
+                    <option value="Q4">الربع الرابع</option>
+                  </select>
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Desktop nav links — full height for border-bottom alignment */}
             <div className="hidden xl:flex items-stretch h-14 md:h-16 gap-0.5" ref={desktopNavRef}>
@@ -518,6 +569,44 @@ export default function Navbar() {
             {/* User info (mobile) */}
             {user && (
               <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-800 px-4 space-y-3">
+                {/* Viewer Filters (Mobile) */}
+                {isViewer && pathname === "/viewer-dashboard" && (
+                  <div className="flex flex-col gap-2 pb-3 mb-3 border-b border-gray-100 dark:border-gray-800">
+                    <p className="text-xs font-bold text-gray-400 dark:text-gray-500">الفلاتر</p>
+                    <div className="relative">
+                      <select
+                        value={currentFY}
+                        onChange={(e) => updateFilters(e.target.value, currentQ)}
+                        className="w-full appearance-none bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2 pl-10 pr-4 rounded-xl font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                      >
+                        <option value="all">كل السنوات</option>
+                        {fiscalYears.map(fy => (
+                          <option key={fy} value={fy}>{fy}</option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={currentQ}
+                        onChange={(e) => updateFilters(currentFY, e.target.value)}
+                        className="w-full appearance-none bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-2 pl-10 pr-4 rounded-xl font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                      >
+                        <option value="all">كل الأرباع</option>
+                        <option value="Q1">الربع الأول</option>
+                        <option value="Q2">الربع الثاني</option>
+                        <option value="Q3">الربع الثالث</option>
+                        <option value="Q4">الربع الرابع</option>
+                      </select>
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
                     {user.profilePicture ? (

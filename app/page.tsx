@@ -399,8 +399,10 @@ function AdminEmployeeDashboard({ headerExtra }: { headerExtra?: React.ReactNode
   useEffect(() => {
     hoursAPI.getFiscalYears().then((res) => {
       if (res.data.success && res.data.data.length > 0) {
-        setFiscalYears(res.data.data);
-        setSelectedFY(res.data.data[0]);
+        const current = getCurrentFiscalYear();
+        const list = res.data.data.includes(current) ? res.data.data : [current, ...res.data.data];
+        setFiscalYears(list);
+        setSelectedFY(current);
       } else {
         setFiscalYears([getCurrentFiscalYear()]);
         setSelectedFY(getCurrentFiscalYear());
