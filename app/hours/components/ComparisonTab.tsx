@@ -59,7 +59,10 @@ const ComparisonChart = React.memo(function ComparisonChart({ data, isActive }: 
             }}
           />
           <Legend
-            formatter={(value) => (value === "planned" ? "الخطة" : "المنجز")}
+            formatter={(value) => <span className="mx-2">{value === "planned" ? "الخطة" : "المنجز"}</span>}
+            wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+            iconType="circle"
+            iconSize={10}
           />
           {/* Recharts ReferenceLine types can be tricky */}
           <ReferenceLine y={0} stroke="#6B7280" />

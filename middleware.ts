@@ -26,6 +26,17 @@ export function middleware(request: NextRequest) {
   }
 
   const userRole = request.cookies.get('user-role')?.value;
+  
+  if (userRole === "viewer") {
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/viewer-dashboard", request.url));
+    }
+    const allowedForViewer = ["/viewer-dashboard", "/profile", "/login"];
+    if (!allowedForViewer.includes(pathname)) {
+      return NextResponse.redirect(new URL("/viewer-dashboard", request.url));
+    }
+  }
+
   if (userRole === "accountant") {
     const isAllowed =
       pathname === "/" ||
