@@ -660,6 +660,12 @@ export const instructorsAPI = {
   updateRates: (id: string, data: UpdateRatesData) =>
     api.patch<InstructorResponse>(`/instructors/${id}/rates`, data),
 
+  addRatePeriod: (id: string, data: { startDate: string; endDate: string | null; dailyTrainingRate: number; dailyConsultationRate: number; note: string }) =>
+    api.post<InstructorResponse>(`/instructors/${id}/rate-periods`, data),
+
+  updateRatePeriod: (id: string, periodId: string, data: { startDate: string; endDate: string | null; dailyTrainingRate: number; dailyConsultationRate: number; note: string }) =>
+    api.patch<InstructorResponse>(`/instructors/${id}/rate-periods/${periodId}`, data),
+
   delete: (id: string) =>
     api.delete(`/instructors/${id}`),
 
