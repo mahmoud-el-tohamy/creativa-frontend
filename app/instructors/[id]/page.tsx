@@ -11,8 +11,6 @@ import type {
   IInstructor,
   InstructorDashboardData,
   PeriodType,
-  UpdateInstructorData,
-  UpdateRatesData,
 } from "@/lib/types/instructors";
 
 const PROGRAM_COLORS: Record<string, string> = {
@@ -70,6 +68,7 @@ type State = {
   editModalOpen: boolean;
   ratesModalOpen: boolean;
   deleteConfirmOpen: boolean;
+  ratePeriodModalOpen: boolean;
 };
 
 type Action =
@@ -77,7 +76,7 @@ type Action =
   | { type: "FETCH_SUCCESS"; payload: IInstructor }
   | { type: "DASHBOARD_FETCH"; period: PeriodType }
   | { type: "DASHBOARD_SUCCESS"; payload: InstructorDashboardData }
-  | { type: "TOGGLE_MODAL"; modal: "edit" | "rates" | "delete"; isOpen: boolean }
+  | { type: "TOGGLE_MODAL"; modal: "edit" | "rates" | "delete" | "ratePeriod"; isOpen: boolean }
   | { type: "SET_ERROR" };
 
 function reducer(state: State, action: Action): State {
@@ -96,6 +95,7 @@ function reducer(state: State, action: Action): State {
         editModalOpen: action.modal === "edit" ? action.isOpen : state.editModalOpen,
         ratesModalOpen: action.modal === "rates" ? action.isOpen : state.ratesModalOpen,
         deleteConfirmOpen: action.modal === "delete" ? action.isOpen : state.deleteConfirmOpen,
+        ratePeriodModalOpen: action.modal === "ratePeriod" ? action.isOpen : state.ratePeriodModalOpen,
       };
     case "SET_ERROR":
       return { ...state, loading: false, dashboardLoading: false };
@@ -113,6 +113,7 @@ const initialState: State = {
   editModalOpen: false,
   ratesModalOpen: false,
   deleteConfirmOpen: false,
+  ratePeriodModalOpen: false,
 };
 
 export default function InstructorProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -131,9 +132,10 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
   const [submitting, setSubmitting] = useState(false);
 
   // Modals state
-  const [editData, setEditData] = useState<{ name: string; specializations: string[] }>({ name: "", specializations: [] });
-  const [ratesData, setRatesData] = useState<{ dailyTrainingRate: string; dailyConsultationRate: string; graduationYear: string; cvLink: string }>({
-    dailyTrainingRate: "", dailyConsultationRate: "", graduationYear: "", cvLink: ""
+  const [editData, setEditData] = useState<{ name: string; specializations: string[]; cvLink: string; graduationYear: string }>({ name: "", specializations: [], cvLink: "", graduationYear: "" });
+  const [ratePeriodMode, setRatePeriodMode] = useState<{ mode: "add" | "edit"; periodId?: string }>({ mode: "add" });
+  const [ratePeriodForm, setRatePeriodForm] = useState({
+    startDate: "", endDate: "", dailyTrainingRate: "", dailyConsultationRate: "", note: ""
   });
 
   const isAdmin = user?.role === "admin";
@@ -218,71 +220,147 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.selectedPeriod]);
 
+  const fetchDashboardData = async () => {
+    dispatch({ type: "DASHBOARD_FETCH", period: state.selectedPeriod });
+    try {
+      const res = await instructorsAPI.getDashboard(id, state.selectedPeriod);
+      if (res.data?.data) {
+        dispatch({ type: "DASHBOARD_SUCCESS", payload: res.data.data });
+      }
+    } catch {
+      dispatch({ type: "SET_ERROR" });
+    }
+  };
+
+  const formatMoney = (val: number | string | undefined | null) => {
+    if (val === undefined || val === null) return "0";
+    const num = Number(val);
+    return isNaN(num) ? "0" : num.toLocaleString("en-US", { maximumFractionDigits: 3 });
+  };
+
   // Handlers
   const handleEditOpen = () => {
     if (state.instructor) {
-      setEditData({ name: state.instructor.name, specializations: [...(state.instructor.specializations || [])] });
+      setEditData({ 
+        name: state.instructor.name, 
+        specializations: [...(state.instructor.specializations || [])],
+        cvLink: state.instructor.cvLink || "",
+        graduationYear: state.instructor.graduationYear ? String(state.instructor.graduationYear) : ""
+      });
       dispatch({ type: "TOGGLE_MODAL", modal: "edit", isOpen: true });
     }
   };
 
-  const handleRatesOpen = () => {
-    if (state.instructor) {
-      setRatesData({
-        dailyTrainingRate: state.instructor.dailyTrainingRate ? String(state.instructor.dailyTrainingRate) : "",
-        dailyConsultationRate: state.instructor.dailyConsultationRate ? String(state.instructor.dailyConsultationRate) : "",
-        graduationYear: state.instructor.graduationYear ? String(state.instructor.graduationYear) : "",
-        cvLink: state.instructor.cvLink || "",
+  const handleRatePeriodOpen = (period?: { _id: string; startDate: string; endDate: string | null; dailyTrainingRate: number; dailyConsultationRate: number; note: string }) => {
+    if (period) {
+      setRatePeriodMode({ mode: "edit", periodId: period._id });
+      setRatePeriodForm({
+        startDate: period.startDate ? new Date(period.startDate).toISOString().split('T')[0] : "",
+        endDate: period.endDate ? new Date(period.endDate).toISOString().split('T')[0] : "",
+        dailyTrainingRate: String(period.dailyTrainingRate),
+        dailyConsultationRate: String(period.dailyConsultationRate),
+        note: period.note || "",
       });
-      dispatch({ type: "TOGGLE_MODAL", modal: "rates", isOpen: true });
+    } else {
+      setRatePeriodMode({ mode: "add" });
+      setRatePeriodForm({
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: "", dailyTrainingRate: "", dailyConsultationRate: "", note: ""
+      });
     }
+    dispatch({ type: "TOGGLE_MODAL", modal: "ratePeriod", isOpen: true });
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const payload: UpdateInstructorData = {
-        name: editData.name,
-        specializations: editData.specializations,
-      };
-      const res = await instructorsAPI.update(id, payload);
-      dispatch({ type: "TOGGLE_MODAL", modal: "edit", isOpen: false });
-      // Update state directly from the response to avoid a full re-fetch with spinner
-      if (res.data.success && res.data.data) {
-        dispatch({ type: "FETCH_SUCCESS", payload: res.data.data });
-      } else {
-        fetchProfile(true);
+      const promises = [];
+      if (canEditInfo) {
+        promises.push(instructorsAPI.update(id, { name: editData.name, specializations: editData.specializations }));
       }
+      if (canEditRates) {
+        promises.push(instructorsAPI.updateRates(id, { 
+          cvLink: editData.cvLink || undefined, 
+          graduationYear: editData.graduationYear ? parseInt(editData.graduationYear, 10) : null 
+        }));
+      }
+
+      await Promise.all(promises);
+      
+      dispatch({ type: "TOGGLE_MODAL", modal: "edit", isOpen: false });
+      
+      // Refresh profile to get combined updates
+      fetchProfile(true);
       window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم التعديل بنجاح" }));
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      let msg = "حدث خطأ أثناء التعديل";
+      if (error && typeof error === "object" && "response" in error) {
+        const errResp = (error as { response?: { data?: unknown } }).response;
+        if (errResp?.data) {
+          if (typeof errResp.data === "string") {
+            try { msg = JSON.parse(errResp.data).message || msg; } catch { msg = errResp.data || msg; }
+          } else if (typeof errResp.data === "object" && errResp.data !== null && "message" in errResp.data) {
+            msg = String((errResp.data as { message: unknown }).message) || msg;
+          }
+        }
+      }
+      window.dispatchEvent(new CustomEvent("global-toast", { detail: msg }));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleRatesSubmit = async (e: React.FormEvent) => {
+  const handleRatePeriodSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Warn if closing/editing the current period
+    const isCurrent = ratePeriodMode.mode === "edit" && state.instructor?.ratePeriods?.find(p => p._id === ratePeriodMode.periodId)?.isCurrent;
+    if (isCurrent && ratePeriodForm.endDate) {
+      if (!confirm("تحذير: أنت تقوم بإغلاق فترة التسعير الحالية. هل أنت متأكد؟ قد يؤثر ذلك على الجلسات الحالية.")) {
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      const payload: UpdateRatesData = {
-        cvLink: ratesData.cvLink || undefined,
-        graduationYear: ratesData.graduationYear ? parseInt(ratesData.graduationYear, 10) : null,
-        dailyTrainingRate: ratesData.dailyTrainingRate ? parseFloat(ratesData.dailyTrainingRate) : 0,
-        dailyConsultationRate: ratesData.dailyConsultationRate ? parseFloat(ratesData.dailyConsultationRate) : 0,
+      const payload = {
+        startDate: ratePeriodForm.startDate,
+        endDate: ratePeriodForm.endDate || null,
+        dailyTrainingRate: parseFloat(ratePeriodForm.dailyTrainingRate),
+        dailyConsultationRate: parseFloat(ratePeriodForm.dailyConsultationRate),
+        note: ratePeriodForm.note,
       };
-      const res = await instructorsAPI.updateRates(id, payload);
-      dispatch({ type: "TOGGLE_MODAL", modal: "rates", isOpen: false });
-      // Update state directly from the response to avoid a full re-fetch with spinner
+      
+      let res;
+      if (ratePeriodMode.mode === "add") {
+        res = await instructorsAPI.addRatePeriod(id, payload);
+      } else {
+        res = await instructorsAPI.updateRatePeriod(id, ratePeriodMode.periodId!, payload);
+      }
+      
+      dispatch({ type: "TOGGLE_MODAL", modal: "ratePeriod", isOpen: false });
       if (res.data.success && res.data.data) {
         dispatch({ type: "FETCH_SUCCESS", payload: res.data.data });
+        fetchDashboardData();
       } else {
         fetchProfile(true);
+        fetchDashboardData();
       }
-      window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم تحديث الأسعار بنجاح" }));
-    } catch (error) {
-      console.error(error);
+      window.dispatchEvent(new CustomEvent("global-toast", { detail: "تم الحفظ بنجاح" }));
+    } catch (error: unknown) {
+      let msg = "حدث خطأ غير متوقع";
+      if (error && typeof error === "object" && "response" in error) {
+        const errResp = (error as { response?: { data?: unknown } }).response;
+        if (errResp?.data) {
+          if (typeof errResp.data === "string") {
+            try { msg = JSON.parse(errResp.data).message || msg; } catch { msg = errResp.data || msg; }
+          } else if (typeof errResp.data === "object" && errResp.data !== null && "message" in errResp.data) {
+            msg = String((errResp.data as { message: unknown }).message) || msg;
+          }
+        }
+      }
+      window.dispatchEvent(new CustomEvent("global-toast", { detail: msg }));
     } finally {
       setSubmitting(false);
     }
@@ -376,7 +454,8 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
             </div>
 
             <div className="flex gap-3">
-              {canEditInfo && (
+              {/* Unified Edit Modal trigger handles info & rates based on roles */}
+              {(canEditInfo || canEditRates) && (
                 <button
                   onClick={handleEditOpen}
                   className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2"
@@ -385,17 +464,6 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                   تعديل المعلومات
-                </button>
-              )}
-              {canEditRates && (
-                <button
-                  onClick={handleRatesOpen}
-                  className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  تعديل الأسعار
                 </button>
               )}
               {canDelete && (
@@ -444,34 +512,41 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
 
-          {canSeeRates && (
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+          {canSeeRates && (() => {
+            const currentPeriod = instructor.ratePeriods?.find(p => p.isCurrent) || null;
+            return (
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative">
               <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                الأسعار
+                الأسعار الحالية
               </h3>
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">اليوم التدريبي:</p>
-                  <p className="font-bold text-gray-900 dark:text-white">{instructor.dailyTrainingRate} ج</p>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">اليوم التدريبي</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="font-bold text-gray-900 dark:text-white">{formatMoney(currentPeriod?.dailyTrainingRate ?? instructor.dailyTrainingRate)} ج</p>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-0.5 text-xs">
+                    <span className="text-gray-400 dark:text-gray-500">الساعة:</span>
+                    <p className="font-bold text-amber-700 dark:text-amber-400">{formatMoney((currentPeriod?.dailyTrainingRate ?? instructor.dailyTrainingRate) / 7)} ج</p>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">سعر الساعة التدريبية:</p>
-                  <p className="font-bold text-amber-700 dark:text-amber-400">{instructor.hourlyTrainingRate} ج</p>
-                </div>
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">اليوم الاستشاري:</p>
-                  <p className="font-bold text-gray-900 dark:text-white">{instructor.dailyConsultationRate} ج</p>
-                </div>
-                <div className="flex justify-between items-center bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">سعر الساعة الاستشارية:</p>
-                  <p className="font-bold text-amber-700 dark:text-amber-400">{instructor.hourlyConsultationRate} ج</p>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">اليوم الاستشاري</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="font-bold text-gray-900 dark:text-white">{formatMoney(currentPeriod?.dailyConsultationRate ?? instructor.dailyConsultationRate)} ج</p>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-0.5 text-xs">
+                    <span className="text-gray-400 dark:text-gray-500">الساعة:</span>
+                    <p className="font-bold text-amber-700 dark:text-amber-400">{formatMoney((currentPeriod?.dailyConsultationRate ?? instructor.dailyConsultationRate) / 7)} ج</p>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
             <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
@@ -519,6 +594,83 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
         </div>
+
+        {/* RATE HISTORY SECTION */}
+        {canSeeRates && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-6">
+            <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">سجل الأسعار</h3>
+              <button 
+                onClick={() => handleRatePeriodOpen()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                إضافة فترة سعر جديدة
+              </button>
+            </div>
+            {instructor.ratePeriods && instructor.ratePeriods.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-gray-700">
+                    <tr>
+                      <th className="px-4 py-3">الحالة</th>
+                      <th className="px-4 py-3">من تاريخ</th>
+                      <th className="px-4 py-3">إلى تاريخ</th>
+                      <th className="px-4 py-3 text-center">اليوم التدريبي</th>
+                      <th className="px-4 py-3 text-center">اليوم الاستشاري</th>
+                      <th className="px-4 py-3">ملاحظة</th>
+                      <th className="px-4 py-3 text-center w-16">تعديل</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {[...instructor.ratePeriods]
+                      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                      .map((period) => (
+                      <tr 
+                        key={period._id} 
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${period.isCurrent ? 'border-r-4 border-r-teal-500 bg-teal-50/30 dark:bg-teal-900/10' : ''}`}
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {period.isCurrent ? (
+                            <span className="bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 text-xs font-bold px-2 py-1 rounded-md">نشط حالياً</span>
+                          ) : (
+                            <span className="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-md">منتهي</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                          {new Date(period.startDate).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" })}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                          {period.endDate ? new Date(period.endDate).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" }) : "مفتوح"}
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold text-gray-900 dark:text-white">{formatMoney(period.dailyTrainingRate)} ج</td>
+                        <td className="px-4 py-3 text-center font-bold text-gray-900 dark:text-white">{formatMoney(period.dailyConsultationRate)} ج</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-xs truncate" title={period.note}>{period.note || "-"}</td>
+                        <td className="px-4 py-3 text-center">
+                          <button 
+                            onClick={() => handleRatePeriodOpen(period)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                          >
+                            <svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-gray-500 dark:text-gray-400 font-bold mb-2">لا يوجد سجل أسعار</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">تم الاعتماد على الأسعار القديمة. يرجى إضافة فترة سعر جديدة لتوثيق التسعير.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* PERIOD FILTER */}
         <div className="flex justify-center my-6">
@@ -614,7 +766,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                   <div className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 border-b-4 border-b-amber-500">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
-                        <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5 text-amber-600 dark:amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                       </div>
@@ -669,7 +821,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             formatter={(value: any, name: any, props: any) => {
                               const amountText = canSeeRates && props.payload.totalAmount > 0 
-                                ? ` | ${props.payload.totalAmount} ج` 
+                                ? ` | ${formatMoney(props.payload.totalAmount)} ج` 
                                 : '';
                               return [`${value} جلسة (${props.payload.hours} ساعة)${amountText}`, name];
                             }}
@@ -732,7 +884,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.64-2.25 1.64-1.74 0-2.1-.96-2.15-1.92H8.03c.05 1.68 1.14 2.88 2.87 3.29V19h2.36v-1.67c1.67-.34 2.94-1.35 2.94-3.03-.01-2.07-1.68-2.88-3.89-3.16z" />
                       </svg>
                       <h3 className="text-teal-100 font-bold mb-1">إجمالي الاستحقاق للفترة</h3>
-                      <div className="text-4xl font-black mb-4">{dashboard.periodTotalAmount} ج</div>
+                      <div className="text-4xl font-black mb-4">{formatMoney(dashboard.periodTotalAmount)} ج</div>
                       
                       <div className="flex gap-6 mt-auto">
                         <div>
@@ -895,8 +1047,8 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                             </td>
                             {canSeeRates && (
                               <>
-                                <td className="px-4 py-3 text-center font-medium">{session.unitRate} ج</td>
-                                <td className="px-4 py-3 text-left font-bold text-teal-600 dark:text-teal-400">{session.sessionAmount} ج</td>
+                                <td className="px-4 py-3 text-center font-medium">{formatMoney(session.unitRate)} ج</td>
+                                <td className="px-4 py-3 text-left font-bold text-teal-600 dark:text-teal-400">{formatMoney(session.sessionAmount)} ج</td>
                               </>
                             )}
                           </tr>
@@ -912,7 +1064,7 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
                         {canSeeRates && (
                           <>
                             <td className="px-4 py-4"></td>
-                            <td className="px-4 py-4 text-left text-teal-600 dark:text-teal-400 text-lg">{dashboard.periodTotalAmount} ج</td>
+                            <td className="px-4 py-4 text-left text-teal-600 dark:text-teal-400 text-lg">{formatMoney(dashboard.periodTotalAmount)} ج</td>
                           </>
                         )}
                       </tr>
@@ -959,22 +1111,48 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">الاسم</label>
-                <input
-                  type="text" required
-                  value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">التخصصات</label>
-                <CustomSelect
-                  multiple searchable options={PROGRAM_OPTIONS}
-                  value={editData.specializations}
-                  onChange={(val) => setEditData({ ...editData, specializations: val as string[] })}
-                />
-              </div>
+              {canEditInfo && (
+                <>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">الاسم</label>
+                    <input
+                      type="text" required
+                      value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">التخصصات</label>
+                    <CustomSelect
+                      multiple searchable options={PROGRAM_OPTIONS}
+                      value={editData.specializations}
+                      onChange={(val) => setEditData({ ...editData, specializations: val as string[] })}
+                    />
+                  </div>
+                </>
+              )}
+              {canEditRates && (
+                <>
+                  <div className={`grid grid-cols-2 gap-4 ${canEditInfo ? "pt-4 border-t border-gray-100 dark:border-gray-700" : ""}`}>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">سنة التخرج</label>
+                      <input
+                        type="number" min="1900" max="2100"
+                        value={editData.graduationYear} onChange={e => setEditData({ ...editData, graduationYear: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">رابط السي في</label>
+                      <input
+                        type="url" dir="ltr"
+                        value={editData.cvLink} onChange={e => setEditData({ ...editData, cvLink: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="pt-4 flex justify-end gap-3">
                 <button type="button" onClick={() => dispatch({ type: "TOGGLE_MODAL", modal: "edit", isOpen: false })} className="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">إلغاء</button>
                 <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700">{submitting ? "جاري الحفظ..." : "حفظ التعديلات"}</button>
@@ -984,62 +1162,67 @@ function InstructorProfileContent({ params }: { params: Promise<{ id: string }> 
         </div>
       )}
 
-      {/* EDIT RATES MODAL */}
-      {state.ratesModalOpen && (
+      {/* RATE PERIOD MODAL */}
+      {state.ratePeriodModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-xl rounded-2xl shadow-2xl flex flex-col">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">تعديل الأسعار والمعلومات الإضافية</h2>
-              <button onClick={() => dispatch({ type: "TOGGLE_MODAL", modal: "rates", isOpen: false })} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {ratePeriodMode.mode === "add" ? "إضافة فترة سعر جديدة" : "تعديل فترة السعر"}
+              </h2>
+              <button onClick={() => dispatch({ type: "TOGGLE_MODAL", modal: "ratePeriod", isOpen: false })} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <form onSubmit={handleRatesSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleRatePeriodSubmit} className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">سنة التخرج</label>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">من تاريخ</label>
                   <input
-                    type="number" min="1900" max="2100"
-                    value={ratesData.graduationYear} onChange={e => setRatesData({ ...ratesData, graduationYear: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                    type="date" required
+                    value={ratePeriodForm.startDate} onChange={e => setRatePeriodForm({ ...ratePeriodForm, startDate: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">رابط السي في</label>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">إلى تاريخ</label>
                   <input
-                    type="url" dir="ltr"
-                    value={ratesData.cvLink} onChange={e => setRatesData({ ...ratesData, cvLink: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                    type="date"
+                    value={ratePeriodForm.endDate} onChange={e => setRatePeriodForm({ ...ratePeriodForm, endDate: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   />
+                  <p className="text-xs text-gray-500 mt-1">اتركه فارغاً إذا كانت الفترة الحالية (نشطة)</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">اليوم التدريبي</label>
                   <input
-                    type="number" min="0" step="0.01"
-                    value={ratesData.dailyTrainingRate} onChange={e => setRatesData({ ...ratesData, dailyTrainingRate: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                    type="number" min="0" step="0.01" required
+                    value={ratePeriodForm.dailyTrainingRate} onChange={e => setRatePeriodForm({ ...ratePeriodForm, dailyTrainingRate: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   />
-                  {ratesData.dailyTrainingRate && (
-                    <p className="text-xs text-amber-600 mt-1 font-bold">الساعة: {(Number(ratesData.dailyTrainingRate)/7).toFixed(2)} ج</p>
-                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">اليوم الاستشاري</label>
                   <input
-                    type="number" min="0" step="0.01"
-                    value={ratesData.dailyConsultationRate} onChange={e => setRatesData({ ...ratesData, dailyConsultationRate: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                    type="number" min="0" step="0.01" required
+                    value={ratePeriodForm.dailyConsultationRate} onChange={e => setRatePeriodForm({ ...ratePeriodForm, dailyConsultationRate: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   />
-                  {ratesData.dailyConsultationRate && (
-                    <p className="text-xs text-amber-600 mt-1 font-bold">الساعة: {(Number(ratesData.dailyConsultationRate)/7).toFixed(2)} ج</p>
-                  )}
                 </div>
               </div>
-              <div className="pt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => dispatch({ type: "TOGGLE_MODAL", modal: "rates", isOpen: false })} className="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">إلغاء</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-400 dark:hover:bg-amber-900/80">{submitting ? "جاري الحفظ..." : "حفظ الأسعار"}</button>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">ملاحظات (اختياري)</label>
+                <textarea
+                  rows={2}
+                  value={ratePeriodForm.note} onChange={e => setRatePeriodForm({ ...ratePeriodForm, note: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700">
+                <button type="button" onClick={() => dispatch({ type: "TOGGLE_MODAL", modal: "ratePeriod", isOpen: false })} className="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">إلغاء</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700">{submitting ? "جاري الحفظ..." : "حفظ الفترة"}</button>
               </div>
             </form>
           </div>

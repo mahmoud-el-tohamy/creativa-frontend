@@ -16,6 +16,20 @@ export interface IInstructor {
   updatedAt: string;
   createdBy: string | null;
   createdByName: string;
+  ratePeriods?: IRatePeriod[];
+}
+
+export interface IRatePeriod {
+  _id: string;
+  startDate: string;
+  endDate: string | null;
+  dailyTrainingRate: number;
+  dailyConsultationRate: number;
+  isCurrent: boolean;
+  note: string;
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
 }
 
 export interface CreateInstructorData {
