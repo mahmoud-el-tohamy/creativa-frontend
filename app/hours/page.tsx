@@ -136,6 +136,7 @@ export default function HoursPageContent() {
         {visitedTabs.has("tracking") && (
           <div style={{ display: activeTab === "tracking" ? "block" : "none" }}>
             <SessionsTab 
+              fiscalYears={fiscalYears}
               showToast={showToast} 
               onSessionsChanged={() => {
                 timetableRef.current?.reload?.();

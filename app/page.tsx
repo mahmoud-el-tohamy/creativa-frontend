@@ -125,14 +125,16 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className=" dir-rtl bg-white dark:bg-gray-800/95 backdrop-blur-sm p-3 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl border-l-4 border-l-teal-500 min-w-[140px]">
-        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-right border-b border-gray-100 dark:border-gray-700 pb-1">
-          {data.fullLabel || label}
-        </p>
+      <div className="bg-white dark:bg-gray-800/95 backdrop-blur-sm p-3 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl border-r-4 border-r-teal-500 min-w-[140px]" dir="rtl">
+        {(data?.fullLabel || label) && (
+          <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-right border-b border-gray-100 dark:border-gray-700 pb-1" dir="auto">
+            {data?.fullLabel || label}
+          </p>
+        )}
         {payload.map((entry, index) => (
-          <div key={index} className="flex justify-between items-center gap-4 flex-row-reverse mt-1">
-            <span className="text-xs font-bold text-teal-600 dark:text-teal-400">{entry.name}:</span>
-            <span className="text-sm font-black text-gray-900 dark:text-white">{entry.value}</span>
+          <div key={index} className="flex justify-between items-center gap-4 mt-1">
+            <span className="text-xs font-bold text-teal-600 dark:text-teal-400" dir="auto">{entry.name}:</span>
+            <span className="text-sm font-black text-gray-900 dark:text-white" dir="ltr">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -839,9 +841,19 @@ function AdminEmployeeDashboard({ headerExtra }: { headerExtra?: React.ReactNode
                   );
                 };
                 
+                const getTypeLabel = (type: string) => {
+                  switch (type) {
+                    case "Training": return "تدريب";
+                    case "Awareness Event": return "فعاليات وعي";
+                    case "Incubation": return "احتضان";
+                    case "Consultation": return "استشارة";
+                    default: return type;
+                  }
+                };
+                
                 const typeData = trainingStats?.typeBreakdown.map(t => ({
                   ...t,
-                  name: t.type,
+                  name: getTypeLabel(t.type),
                   fill: t.type === "Training" || t.type === "تدريب" ? "#1D9E75" : t.type === "Awareness Event" ? "#F59E0B" : t.type === "Incubation" ? "#9333EA" : "#0284C7"
                 })) || [];
 
