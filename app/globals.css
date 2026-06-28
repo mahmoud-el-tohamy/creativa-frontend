@@ -56,3 +56,29 @@ body {
 .dark * {
   scrollbar-color: #0f766e transparent;
 }
+
+/* Recharts Tooltip RTL Fixes */
+.recharts-default-tooltip {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.recharts-tooltip-item {
+  direction: rtl !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.recharts-tooltip-item-name {
+  unicode-bidi: plaintext !important;
+}
+
+.recharts-tooltip-item-value {
+  direction: ltr !important;
+  unicode-bidi: plaintext !important;
+}
+
+.recharts-tooltip-item-separator {
+  display: none !important;
+}
