@@ -227,6 +227,7 @@ export interface SessionsParams {
   limit?: number;
   sort?: "newest" | "oldest" | "name";
   search?: string; // PERF FIX 2 — Added search
+  instructorSearch?: string;
 }
 
 export interface Pagination {

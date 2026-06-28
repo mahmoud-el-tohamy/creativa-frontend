@@ -1461,11 +1461,12 @@ function ImportModal({
 
 
 export interface SessionsTabProps {
+  fiscalYears: string[];
   showToast: (msg: string, type: "success" | "error") => void;
   onSessionsChanged: () => void;
 }
 
-function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
+function SessionsTab({ fiscalYears, showToast, onSessionsChanged }: SessionsTabProps) {
 
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [page, setPage] = useState(1);
@@ -1518,6 +1519,7 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
           limit: 20,
           sort: flt.sort,
           search: flt.search || undefined,
+          instructorSearch: flt.instructorSearch || undefined,
           fiscalYear: flt.fiscalYear || undefined,
           programName: flt.programName || undefined,
           type: flt.type || undefined,
@@ -1574,14 +1576,17 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
-  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [localSearch, setLocalSearch] = useState(state.sessionsFilters.search);
+  const [localInstructorSearch, setLocalInstructorSearch] = useState(state.sessionsFilters.instructorSearch);
 
-  const handleSearch = (val: string) => {
-    if (searchDebounce.current) clearTimeout(searchDebounce.current);
-    searchDebounce.current = setTimeout(
-      () => dispatch({ type: "SET_FILTER", key: "search", value: val }),
-      250,
-    );
+  const handleApplySearch = () => {
+    dispatch({
+      type: "SET_MULTIPLE_FILTERS",
+      filters: {
+        search: localSearch,
+        instructorSearch: localInstructorSearch,
+      },
+    });
   };
 
   const handleExport = async (type: "hours" | "timetable") => {
@@ -1628,9 +1633,9 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
   const fyOptions = useMemo(
     () => [
       { value: "", label: "كل السنوات" },
-      ...state.fiscalYears.map((fy) => ({ value: fy, label: fy })),
+      ...fiscalYears.map((fy) => ({ value: fy, label: fy })),
     ],
-    [state.fiscalYears],
+    [fiscalYears],
   );
 
   const programOptions = useMemo(
@@ -1777,22 +1782,33 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 relative z-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <input
             type="text"
             placeholder="بحث باسم الجلسة..."
-            defaultValue={flt.search}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="col-span-2 lg:col-span-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleApplySearch()}
+            className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <CustomSelect
-            value={flt.programName}
-            options={programOptions}
-            onChange={(v) =>
-              dispatch({ type: "SET_FILTER", key: "programName", value: v })
-            }
+          <input
+            type="text"
+            placeholder="بحث باسم المدرب..."
+            value={localInstructorSearch}
+            onChange={(e) => setLocalInstructorSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleApplySearch()}
+            className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <div className="w-full">
+            <CustomSelect
+              value={flt.programName}
+              options={programOptions}
+              onChange={(v) =>
+                dispatch({ type: "SET_FILTER", key: "programName", value: v })
+              }
+            />
+          </div>
           <CustomSelect
             value={flt.type}
             options={[
@@ -1823,7 +1839,7 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
                 value: e.target.value,
               })
             }
-            className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
             type="date"
@@ -1835,20 +1851,40 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
                 value: e.target.value,
               })
             }
-            className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <div className="flex gap-2">
-            <CustomSelect
-              value={flt.sort}
-              options={sortOptions}
-              onChange={(v) =>
-                dispatch({ type: "SET_FILTER", key: "sort", value: v })
-              }
-            />
+          <div className="flex gap-2 w-full">
+            <div className="flex-1">
+              <CustomSelect
+                value={flt.sort}
+                options={sortOptions}
+                onChange={(v) =>
+                  dispatch({ type: "SET_FILTER", key: "sort", value: v })
+                }
+              />
+            </div>
             <button
-              onClick={() => dispatch({ type: "RESET_FILTERS" })}
+              onClick={handleApplySearch}
+              title="بحث"
+              className="p-2 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                dispatch({ type: "RESET_FILTERS" });
+                setLocalSearch("");
+                setLocalInstructorSearch("");
+              }}
               title="إعادة تعيين الفلاتر"
-              className="p-2 rounded-xl border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+              className="p-2 flex items-center justify-center rounded-xl border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -1984,7 +2020,7 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
                         {s.programName}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-gray-800 dark:text-gray-200 max-w-[180px] truncate">
+                    <td className="px-3 py-2.5 text-gray-800 dark:text-gray-200 max-w-[180px] truncate" title={s.sessionName}>
                       {s.sessionName}
                       {s.isPaid === false && (
                         <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50">
@@ -2005,7 +2041,7 @@ function SessionsTab({ showToast, onSessionsChanged }: SessionsTabProps) {
                         {s.mode === "online" ? "أونلاين" : "أوفلاين"}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 whitespace-nowrap" title={s.instructorName || ""}>
                       {s.instructorId && s.instructorName ? (
                         <Link href={`/instructors/${s.instructorId}`} className="hover:text-blue-600 hover:underline transition-colors dark:hover:text-blue-400">
                           {s.instructorName}

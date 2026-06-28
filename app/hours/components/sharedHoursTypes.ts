@@ -220,6 +220,7 @@ export function computeMonthlyTotal(
 
 export interface SessionFilters {
   search: string;
+  instructorSearch: string;
   programName: string;
   type: string;
   dateFrom: string;
@@ -270,6 +271,7 @@ export type Action =
     }
   | { type: "SET_SESSIONS_LOADING"; loading: boolean }
   | { type: "SET_FILTER"; key: keyof SessionFilters; value: string }
+  | { type: "SET_MULTIPLE_FILTERS"; filters: Partial<SessionFilters> }
   | { type: "RESET_FILTERS" }
   | { type: "OPEN_MODAL"; session?: TrainingSession }
   | { type: "CLOSE_MODAL" }
@@ -303,6 +305,7 @@ export type Action =
 
 export const INITIAL_FILTERS: SessionFilters = {
   search: "",
+  instructorSearch: "",
   programName: "",
   type: "",
   dateFrom: "",
@@ -363,6 +366,15 @@ export function reducer(state: State, action: Action): State {
         sessionsFilters: {
           ...state.sessionsFilters,
           [action.key]: action.value,
+        },
+        sessionsPagination: { ...state.sessionsPagination, page: 1 },
+      };
+    case "SET_MULTIPLE_FILTERS":
+      return {
+        ...state,
+        sessionsFilters: {
+          ...state.sessionsFilters,
+          ...action.filters,
         },
         sessionsPagination: { ...state.sessionsPagination, page: 1 },
       };
