@@ -46,8 +46,8 @@ An enterprise-grade, internal operations platform tailored for **Creativa Innova
 - **Recharts Analytics:** Highly interactive visualizations with configurable date ranges to track the volume of warnings and blacklistings over time.
 
 ### 👥 Instructors & Financial Tracking (New)
-- **Instructor Profiles:** A dedicated interface to manage instructor data, associate training tracks, attach CVs, and assign daily financial rates.
-- **Financial Module:** A comprehensive table view that automatically calculates total costs per session based on instructor rates and session durations.
+- **Instructor Profiles:** A dedicated interface to manage instructor data, associate training tracks, attach CVs, and manage dynamic historical rate periods.
+- **Financial Module:** A comprehensive table view that automatically calculates exact costs per session based on the instructor's active rate at the specific session date.
 - **1-Click Financial Exports:** Allows operations managers to export detailed financial summaries mapped by specific date ranges to Excel.
 
 ### ⏱️ Hours & Operational Timetables
